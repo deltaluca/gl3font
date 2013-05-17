@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) {
         ofstream data;
         data.open(oname+".json", ios::out);
         data << "{\n";
+        data << "    \"pxheight\":" << pxheight << ",\n";
         data << "    \"idmap\": {";
             fst = true;
             for (auto c: chars) {

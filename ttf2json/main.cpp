@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     map<char, FT_Glyph> glyphmap;
     for (auto c: chars) {
         FT_Load_Glyph(face, FT_Get_Char_Index(face, c), FT_LOAD_RENDER);
-        offsets.push_back(tuple<int,int,int>(face->glyph->advance.x>>6, face->glyph->bitmap_left, -(pxheight-face->glyph->bitmap.rows) - face->glyph->bitmap_top));
+        offsets.push_back(tuple<int,int,int>(face->glyph->advance.x>>6, face->glyph->bitmap_left, -(-face->glyph->bitmap.rows) - face->glyph->bitmap_top));
     }
 
     // Output files.

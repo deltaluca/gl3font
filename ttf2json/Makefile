@@ -1,4 +1,4 @@
-CFLAGS=`pkg-config --libs freetype2 --cflags` -std=c++11 -g
+CFLAGS=`pkg-config --libs freetype2 --cflags` -std=c++11 -O3
 LFLAGS=`pkg-config --libs freetype2 libpng`
 
 all:

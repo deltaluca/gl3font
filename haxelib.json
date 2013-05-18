@@ -3,9 +3,9 @@
     "url":          "https://github.com/deltaluca/gl3font",
     "license":      "MIT",
     "tags":         ["cpp"],
-    "description":  "Library for rendering textured, bitmap fonts for hx-ogl and associated tool to generate mipmap levels and data from .ttf",
+    "description":  "Library for rendering crisp vector fonts in opengl (haxe side using ogl lib) based on distance fields",
     "version":      "0.0.1",
-    "releasenote":  "First release, many improvements could be made, but perfectly functional",
+    "releasenote":  "First release, many improvements could be made, but perfectly functional.",
     "contributors": ["deltaluca"],
     "dependencies": {
         "hxcpp": "",

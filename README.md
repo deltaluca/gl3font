@@ -1,6 +1,7 @@
-ttf2json:
+ttfcompile:
 
-    Simple tool to render a (non-optimal) packed font-atlas as a signed distance map.
+    Simple tool to render a packed, signed distance field representation of a font character set
+    and associated data used by gl3font.
 
 gl3font/Font.hx:
 

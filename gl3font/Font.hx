@@ -4,13 +4,6 @@ import ogl.GL;
 import ogl.GLM;
 import ogl.GLArray;
 
-typedef TextBounds = {
-    x:Float,
-    y:Float,
-    w:Float,
-    h:Float
-};
-
 class Metric {
     public var advance:Float;
     public var left:Float;
@@ -83,7 +76,7 @@ enum FontAlign {
 class StringBuffer {
     public static inline var VERTEX_SIZE = 4;
 
-    var font:Font;
+    public var font:Font;
     var pen:Float;
 
     var vertexData:GLfloatArray;
@@ -103,6 +96,7 @@ class StringBuffer {
         numVertices += numVerts;
         return current;
     }
+
     inline function clear() {
         numVertices = 0;
     }
@@ -123,6 +117,11 @@ class StringBuffer {
         vertexBuffer = GL.genBuffers(1)[0];
         GL.bindBuffer(GL.ARRAY_BUFFER, vertexBuffer);
         GL.bufferData(GL.ARRAY_BUFFER, vertexData, staticDraw ? GL.STATIC_DRAW : GL.DYNAMIC_DRAW);
+    }
+
+    public function destroy() {
+        GL.deleteVertexArrays([vertexArray]);
+        GL.deleteBuffers([vertexBuffer]);
     }
 
     public function getLines(string:String):Array<Array<Int>> {
@@ -277,6 +276,10 @@ class FontRenderer {
         colour = GL.getUniformLocation(program, "fontColour");
     }
 
+    public function destroy() {
+        GL.deleteProgram(program);
+    }
+
     public function setTransform(mat:Mat4) {
         GL.uniformMatrix4fv(proj, false, mat);
     }
@@ -323,5 +326,9 @@ class Font {
 
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+    }
+
+    public function destroy() {
+        GL.deleteTextures([texture]);
     }
 }

@@ -20,15 +20,15 @@ class Main {
         var font = new Font(face+".dat", face+".png");
 
         var buf = new StringBuffer(font);
-        buf.set("µ®½§¥¹»ßðØæÐË¶º\n!!!Hello World!!!", AlignCentreJustified);
+        buf.set("µ®½§¥¹»ßðØæÐË¶º!", AlignCentre);
 
         var renderer = new FontRenderer();
         while (!GLFW.windowShouldClose(window)) {
             GLFW.pollEvents();
 
             var time = GLFW.getTime();
-            var rotation = time*0;
-            var size = 80 + Math.sin(time*0.5)*70*0-30;
+            var rotation = time;
+            var size = 80 + Math.sin(time*0.5)*70;
             var pos = GLFW.getCursorPos(window);
             var x = pos.x;
             var y = pos.y;
@@ -48,6 +48,13 @@ class Main {
 
             GLFW.swapBuffers(window);
         }
+
+        buf.destroy();
+        font.destroy();
+        renderer.destroy();
+
+        GLFW.destroyWindow(window);
+        GLFW.terminate();
     }
 }
 

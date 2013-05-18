@@ -11,6 +11,74 @@ typedef TextBounds = {
     h:Float
 };
 
+class Metric {
+    public var advance:Float;
+    public var left:Float;
+    public var top:Float;
+    public var width:Float;
+    public var height:Float;
+    public var u:Float;
+    public var v:Float;
+    public var w:Float;
+    public var h:Float;
+    public function new() {}
+}
+class FontInfo {
+    public var idmap:Map<Int,Int>; // map glyph to id
+
+    public var metrics:Array<Metric>;
+    public var kerning:Array<Array<Float>>;
+
+    public var height:Float;
+    public var ascender:Float;
+    public var descender:Float;
+
+    public function new(file:String) {
+        var f = sys.io.File.read(file, true);
+        var N = f.readInt32();
+        height    = f.readFloat();
+        ascender  = f.readFloat();
+        descender = f.readFloat();
+        idmap = new Map<Int,Int>();
+        metrics = [for (i in 0...N) {
+            idmap.set(f.readInt32(), i);
+            var m = new Metric();
+            m.advance = f.readFloat();
+            m.left    = f.readFloat();
+            m.top     = f.readFloat();
+            m.width   = f.readFloat();
+            m.height  = f.readFloat();
+            m.u       = f.readFloat();
+            m.v       = f.readFloat();
+            m.w       = f.readFloat();
+            m.h       = f.readFloat();
+            m;
+        }];
+        var y = 0; var x = 0;
+        var kern = []; kerning = [kern];
+        while (x < N && y < N) {
+            var k = f.readFloat();
+            for (i in 0...f.readInt32()) {
+                kern[x++] = k;
+                if (x == N) {
+                    x = 0;
+                    kerning.push(kern = []);
+                    y++;
+                }
+            }
+        }
+    }
+}
+
+enum FontAlign {
+    AlignLeft;
+    AlignRight;
+    AlignCentre;
+    AlignLeftJustified;
+    AlignRightJustified;
+    AlignCentreJustified;
+}
+
 @:allow(gl3font)
 class StringBuffer {
     public static inline var VERTEX_SIZE = 4;
@@ -37,7 +105,6 @@ class StringBuffer {
     }
     inline function clear() {
         numVertices = 0;
-        pen = 0;
     }
     inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float) {
         vertexData[i+0] = x;
@@ -58,55 +125,108 @@ class StringBuffer {
         GL.bufferData(GL.ARRAY_BUFFER, vertexData, staticDraw ? GL.STATIC_DRAW : GL.DYNAMIC_DRAW);
     }
 
-    public function set(string:String):TextBounds {
+    public function getLines(string:String):Array<Array<Int>> {
+        var line = []; var lines = [line];
+        for (i in 0...haxe.Utf8.length(string)) {
+            var c = haxe.Utf8.charCodeAt(string, i);
+            if (c == '\n'.code)
+                lines.push(line = []);
+            else line.push(c);
+        }
+        return lines;
+    }
+
+    public function set(string:String, ?align:FontAlign) {
         clear();
-        var size:Int = font.json.pxheight;
-        var prev_index:Int = -1;
+        var lines = getLines(string);
+        var charCount = 0; for (l in lines) charCount += l.length;
+        var index = reserve(6*charCount);
+        if (align == null) align = AlignLeft;
 
-        var index = reserve(6*string.length);
+        var metrics = [];
+        for (line in lines) {
+            var minx = 1e100;
+            var maxx = -1e100;
 
-        var minx = 1e100;
-        var miny = 1e100;
-        var maxx = -1e100;
-        var maxy = -1e100;
-        for (i in 0...string.length) {
-            var glyph:Int = Reflect.field(font.json.idmap, string.charAt(i));
-            var uvwh:{u:Float,v:Float,w:Float,h:Float,sizeu:Float,sizev:Float} = font.json.uvwh[glyph];
-            if (i != 0) pen += font.json.kerning[prev_index][glyph];
+            var prev_index:Int = -1;
+            var fst = true;
+            var pen = 0.0;
+            for (char in line) {
+                var glyph = font.info.idmap[char];
+                var metric = font.info.metrics[glyph];
+                if (!fst) pen += font.info.kerning[prev_index][glyph];
+                fst = false;
 
-            var x0 = font.json.offsets[glyph].left + pen;
-            var y1 = font.json.offsets[glyph].top;
-            var x1 = x0 + uvwh.sizeu;
-            var y0 = y1 - uvwh.sizev;
+                var x0 = metric.left + pen;
+                var x1 = x0 + metric.width;
 
-            var u0 = uvwh.u;
-            var v0 = uvwh.v;
-            var u1 = u0 + uvwh.w;
-            var v1 = v0 + uvwh.h;
+                pen += metric.advance;
+                prev_index = glyph;
 
-            vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
-            vertex(index, x1,y1, u1,v1); index += VERTEX_SIZE;
-            vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
-
-            vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
-            vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
-            vertex(index, x0,y0, u0,v0); index += VERTEX_SIZE;
-
-            pen += font.json.offsets[glyph].advance;
-            prev_index = glyph;
-
-            if (x0 < minx) minx = x0;
-            if (x1 > maxx) maxx = x1;
-            if (y0 < miny) miny = y0;
-            if (y1 > maxy) maxy = y1;
+                if (x0 < minx) minx = x0;
+                if (x1 > maxx) maxx = x1;
+            }
+            metrics.push([minx, maxx-minx]);
         }
 
-        return {
-            x : minx,
-            y : miny,
-            w : maxx-minx,
-            h : maxy-miny
+        var xform:Array<Array<Float>> = switch (align) {
+            case AlignLeft:
+                [for (m in metrics) [0,1]];
+            case AlignRight:
+                [for (m in metrics) [-m[1],1]];
+            case AlignCentre:
+                [for (m in metrics) [-m[1]/2,1]];
+            case AlignLeftJustified:
+                var max = 0.0;
+                for (m in metrics) if (m[1] > max) max = m[1];
+                [for (m in metrics) [0,max/m[1]]];
+            case AlignRightJustified:
+                var max = 0.0;
+                for (m in metrics) if (m[1] > max) max = m[1];
+                [for (m in metrics) [-max,max/m[1]]];
+            case AlignCentreJustified:
+                var max = 0.0;
+                for (m in metrics) if (m[1] > max) max = m[1];
+                [for (m in metrics) [-max/2,max/m[1]]];
         };
+
+        var peny = 0.0;
+        var i = -1;
+        for (line in lines) {
+            i++;
+            var pen = xform[i][0];
+            var scale = xform[i][1];
+            var fst = true;
+            var prev_index = -1;
+            for (char in line) {
+                var glyph = font.info.idmap[char];
+                var metric = font.info.metrics[glyph];
+                if (!fst) pen += font.info.kerning[prev_index][glyph]*scale;
+                fst = false;
+
+                var x0 = metric.left + pen;
+                var y1 = metric.top + peny;
+                var x1 = x0 + metric.width;
+                var y0 = y1 - metric.height;
+
+                var u0 = metric.u;
+                var v0 = metric.v;
+                var u1 = u0 + metric.w;
+                var v1 = v0 + metric.h;
+
+                vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
+                vertex(index, x1,y1, u1,v1); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
+
+                vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
+                vertex(index, x0,y0, u0,v0); index += VERTEX_SIZE;
+
+                pen += metric.advance*scale;
+                prev_index = glyph;
+            }
+            peny += font.info.height;
+        }
     }
 }
 
@@ -187,12 +307,11 @@ class FontRenderer {
     }
 }
 
-@:allow(gl3font)
 class Font {
-    var json:Dynamic;
-    var texture:GLuint;
-    public function new(jsonPath:String, dist:String) {
-        json = haxe.Json.parse(sys.io.File.getContent(jsonPath));
+    public var info:FontInfo;
+    public var texture:GLuint;
+    public function new(datPath:String, dist:String) {
+        info = new FontInfo(datPath);
         texture = GL.genTextures(1)[0];
         GL.bindTexture(GL.TEXTURE_2D, texture);
 
@@ -205,7 +324,4 @@ class Font {
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
     }
-
-    public var baseSize(get, never):Float;
-    inline function get_baseSize():Float return json.pxheight;
 }

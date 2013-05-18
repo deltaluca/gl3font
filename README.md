@@ -9,3 +9,5 @@ gl3font/Font.hx:
 samples/:
 
     Basic usage example.
+
+Support for full unicode, with pre-built atlases supporting all ISO-1 latin code page.

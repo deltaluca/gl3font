@@ -16,19 +16,19 @@ class Main {
         GL.enable(GL.BLEND);
         GL.blendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-        var face = "../free/sans";
-        var font = new Font(face+".json", face+".png");
+        var face = "../dejavu/serif";
+        var font = new Font(face+".dat", face+".png");
 
         var buf = new StringBuffer(font);
-        var bounds = buf.set("_,;:'\"Hello World!^*%#.");
+        buf.set("µ®½§¥¹»ßðØæÐË¶º\n!!!Hello World!!!", AlignCentreJustified);
 
         var renderer = new FontRenderer();
         while (!GLFW.windowShouldClose(window)) {
             GLFW.pollEvents();
 
             var time = GLFW.getTime();
-            var rotation = time;
-            var size = 80 + Math.sin(time)*50;
+            var rotation = time*0;
+            var size = 80 + Math.sin(time*0.5)*70*0-30;
             var pos = GLFW.getCursorPos(window);
             var x = pos.x;
             var y = pos.y;
@@ -40,9 +40,8 @@ class Main {
             renderer.setTransform(
                 Mat3x2.viewportMap(800, 600) *
                 Mat3x2.translate(x, y) *
-                Mat3x2.scale(size/font.baseSize, size/font.baseSize) *
-                Mat3x2.rotate(rotation) *
-                Mat3x2.translate(-bounds.x-bounds.w/2, font.baseSize/2)
+                Mat3x2.scale(size, size) *
+                Mat3x2.rotate(rotation)
             );
             renderer.render(buf);
             renderer.end();

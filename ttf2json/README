@@ -1,3 +1,0 @@
-Simple utility for generating mip-levels of a truetype font for use in accompanying hx-ogl font lib.
-
-Dependens on libpng, png++ and freetype2

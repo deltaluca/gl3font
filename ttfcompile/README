@@ -1,0 +1,3 @@
+Utility to generate the required .dat and .png files used by gl3font.
+
+Dependens on libpng, png++ and freetype2 and icu for unicode support.

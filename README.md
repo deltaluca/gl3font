@@ -6,7 +6,7 @@ Whilst the API in this library is specific to Haxe and the hx-ogl API, the ttfco
 
 Based upon Valve's siggraph paper: http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
 
-### ttfcompile:
+## ttfcompile:
 
 This small c++ tool takes a font file (compatible with freetype2), eg TrueType .ttf, and produces a texture atlas .png of a given set of characters (By default all ISO-1 Latin characters) as a signed distance field, together with a .dat file describing necessary information to make use of the atlas.
 
@@ -72,7 +72,9 @@ would be encoded in the .dat file as
 0:ft, 3:u32, 1:ft, 1:u32, -1:ft, 1:u32, 1:ft, 2:u32, 0:ft, 5:u32, 1:ft, 4:u32
 ```
 
-### gl3font API:
+Can check the free, and dejavu subdirectories for example outputs.
+
+## gl3font API:
 
 Simple API for rendering said fonts generated with ttfcompile using ogl, all types included with
 ```import gl3font.Font;```

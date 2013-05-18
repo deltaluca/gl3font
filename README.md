@@ -1,3 +1,5 @@
+![rendering example](https://github.com/deltaluca/gl3font/raw/master/capture.png "Rendering EXample")
+
 Simple, high quality font rendering for opengl.
 
 Whilst the API in this library is specific to Haxe and the hx-ogl API, the ttfcompile tool would be easily used in any suitable environment where we haxe programmable shaders, so any stage3d (flash), or other opengl/directx environment.

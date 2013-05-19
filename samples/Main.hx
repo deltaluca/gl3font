@@ -16,8 +16,8 @@ class Main {
         GL.enable(GL.BLEND);
         GL.blendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-        var face = "../free/sans";
-        var font = new Font(face+".dat", face+".png");
+        var face = "../dejavu/serif";
+        var font = new Font('$face.dat', '$face.png');
 
         var buf = new StringBuffer(font);
         buf.set("µ®½§¥¹»ßðØæÐË¶º!", AlignCentre);
@@ -28,10 +28,10 @@ class Main {
 
             var time = GLFW.getTime();
             var rotation = time;
-            var size = 80 + Math.sin(time*0.5)*70;
+            var size = 160 + Math.sin(time*0.5)*120;
             var pos = GLFW.getCursorPos(window);
-            var x = pos.x;
-            var y = pos.y;
+            var x = pos.x*0+400;
+            var y = pos.y*0+300;
 
             GL.clear(GL.COLOR_BUFFER_BIT);
 
@@ -41,6 +41,7 @@ class Main {
                 Mat3x2.viewportMap(800, 600) *
                 Mat3x2.translate(x, y) *
                 Mat3x2.scale(size, size) *
+                new Mat3x2([1, Math.cos(time), 0, 1, 0, 0]) *
                 Mat3x2.rotate(rotation)
             );
             renderer.render(buf);

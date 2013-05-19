@@ -2,7 +2,7 @@
 
 height=250
 gap=3
-search=60
+search=40
 out=512
 
 set -x

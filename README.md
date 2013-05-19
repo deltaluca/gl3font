@@ -17,7 +17,7 @@ Support for full unicode.
 * `font` : The font file (eg: /usr/share/fonts/truetype/freefont/FreeSans.ttf)
 * `size` : Pixel size for font when rendering an intial atlas of characters. Should aim for some large value like `250` so that we have a sufficiently high quality atlas to compute the distance field from.
 * `gap`  : Pixel gap between characters in initial atlas, a value of `3` seems to give a good tradeoff between efficiency in terms of how large the output image must be to get good quality, whilst preventing adjacent characters intefering in the distance field.
-* `search-radius` : Pixel radius in the initial high quality atlas for performing brute-force search of nearest boundary, needs to scale with the pixel font size, a value of `60` for a font size of `250` seems to work well.
+* `search-radius` : Pixel radius in the initial high quality atlas for performing brute-force search of nearest boundary, needs to scale with the pixel font size, a value of `40` for a font size of `250` seems to work well.
 * `output-size` : Pixel size for the dimensions of the output distance field (Actual output may likely have one dimension shorter, output is not generally an exact square).
 * `char-set` : Set of unicode characters to use for the atlast, by default all of the ISO-1 latin code page.
 * `output-name` : Name for output files (and location), output files written as output-name.png and output-name.dat. By default the given font file name/location is used for output-name.
@@ -66,7 +66,7 @@ example, the kerning matrix:
  [-1, 1, 1, 0 ]
  [ 0, 0, 0, 0 ]
  [ 1, 1, 1, 1 ]]
-```     
+```
 would be encoded in the .dat file as
 ```
 0:ft, 3:u32, 1:ft, 1:u32, -1:ft, 1:u32, 1:ft, 2:u32, 0:ft, 5:u32, 1:ft, 4:u32
@@ -92,7 +92,7 @@ class Font {
 
     // Information from .dat file parsed.
     var info : FontInfo;
-    
+
     // Destroy GL state, can't use font following this call.
     function destroy();
 }
@@ -122,15 +122,15 @@ Per character metrics from .dat file.
 class Matric {
     // Horizontal offset after rendering character.
     var advance : Float;
-    
+
     // Horizontal and vertical offsets for rendering character.
     var left : Float;
     var top : Float;
-    
+
     // Character size
     var width : Float;
     var height : Float;
-    
+
     // Character texture rectangle in atlas png
     var u : Float;
     var v : Float;
@@ -142,24 +142,24 @@ class Matric {
 Rendering engine for gl3font fonts.
 ```
 class FontRenderer {
-    
+
     function new();
-    
+
     // Set transformation matrix for rendering font to the screen.
     function setTransform(mat:Mat4);
-    
+
     // Set font colour for rendering
     function setColour(colour:Vec4);
-    
+
     // Begin rendering fonts (Selects gl program, enables vertex attrib arrays)
     function begin();
-    
+
     // End rendering of fonts (disablsed vertex attrib arrays)
     function end();
-    
+
     // Render a string, must be called being begin() and end()
     function render(string:StringBuffer);
-    
+
     // Destroy GL state, can't use renderer following this call.
     function destroy();
 }
@@ -168,21 +168,21 @@ class FontRenderer {
 GL3Font 'string', string data is buffered for efficient rendering.
 ```
 class StringBuffer {
-    
+
     // Create string buffer with initial space for 'size' characters
     // and with vertex buffer set for either static, or dynamic drawing.
     // (Strings that frequently change should be dynamic).
     function new(font:Font, ?size:Int=1, ?staticDraw:Bool=false);
-    
+
     // Font in use for string, can be changed at any 'reasonable' time.
     // i.e. changing font, after setting text, but before rencering has no effect
     // on that rendered text.
     var font:Font;
-    
+
     // Set StringBuffer to render the given string, using given alignment.
     // Multiline strings (delimited by \n) permitted.
     function set(string:String, ?align:FontAlign=AlignLeft);
-    
+
     // Destroy GL state, can't use string buffer following this call.
     function destroy();
 }
@@ -194,7 +194,7 @@ enum FontAlign {
     AlignLeft;   // Text drawn starting with first baseline at y=0, rendering each line to the right of origin.
     AlignRight;  // Text drawn starting with first baseline at y=0, rendering each line to the left of origin.
     AlignCentre; // Text drawn starting with first baseline at y=0, rendering each line centered on x=0.
-    
+
     // Justified varients of the above. Each line has spacing artificially scaled up so that every line covers
     // the same horizontal space.
     AlignLeftJustified;

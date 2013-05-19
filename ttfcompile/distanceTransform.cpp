@@ -8,8 +8,8 @@
 
 using namespace std;
 
-void distanceTransform(const png::image<png::rgb_pixel>& image,
-                       png::image<png::rgb_pixel>& dist,
+void distanceTransform(const png::image<png::gray_pixel>& image,
+                       png::image<png::gray_pixel>& dist,
                        pair<int,int> insize,
                        pair<int,int> outsize,
                        int searchsize) {
@@ -28,10 +28,10 @@ void distanceTransform(const png::image<png::rgb_pixel>& image,
         float fx = x-x0;
         float fy = y-y0;
 
-        int g00 = image[y0][x0].red;
-        int g10 = image[y0][x1].red;
-        int g11 = image[y1][x1].red;
-        int g01 = image[y1][x0].red;
+        int g00 = image[y0][x0];
+        int g10 = image[y0][x1];
+        int g11 = image[y1][x1];
+        int g01 = image[y1][x0];
 
         return ((1-fx)*(1-fy)*g00 + (1-fx)*fy*g01 + fx*(1-fy)*g10 + fx*fy*g11)-0x80;
     };
@@ -81,8 +81,7 @@ void distanceTransform(const png::image<png::rgb_pixel>& image,
         else if (m == -1e20f) m = 0;
         else
             m = (m - min)*det;
-        int g = (int)m;
-        dist[iy][ix] = png::rgb_pixel(g,g,g);
+        dist[iy][ix] = (int)m;
     }}
 
     delete [] hood;

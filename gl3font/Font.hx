@@ -320,9 +320,9 @@ class Font {
 
         var file = sys.io.File.read(dist, true);
         var png = (new format.png.Reader(file)).read();
-        var data:GLubyteArray = format.png.Tools.extract32(png).getData();
+        var data:GLubyteArray = format.png.Tools.extract(png,[0]).getData();
         var header = format.png.Tools.getHeader(png);
-        GL.texImage2D(GL.TEXTURE_2D, 0, GL.LUMINANCE, header.width, header.height, 0, GL.RGBA, data);
+        GL.texImage2D(GL.TEXTURE_2D, 0, GL.LUMINANCE, header.width, header.height, 0, GL.LUMINANCE, data);
 
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);

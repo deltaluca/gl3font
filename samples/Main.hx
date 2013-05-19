@@ -16,7 +16,7 @@ class Main {
         GL.enable(GL.BLEND);
         GL.blendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-        var face = "../dejavu/serif";
+        var face = "../free/sans";
         var font = new Font(face+".dat", face+".png");
 
         var buf = new StringBuffer(font);

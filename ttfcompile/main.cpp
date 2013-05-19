@@ -22,8 +22,8 @@ void pack_boxes(const vector<pair<int,int>>& sizes, int gap,
                 map<int,pair<int,int>>* _packing,
                 pair<int,int>* _size);
 
-void distanceTransform(const png::image<png::rgb_pixel>& image,
-                       png::image<png::rgb_pixel>& dist,
+void distanceTransform(const png::image<png::gray_pixel>& image,
+                       png::image<png::gray_pixel>& dist,
                        pair<int,int> insize,
                        pair<int,int> outsize,
                        int searchsize);
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     pack_boxes(sizes, gap, &packing, &dimensions);
 
     // Pack glyphs, and produce uvwh details
-    png::image<png::rgb_pixel> image(dimensions.first, dimensions.second);
+    png::image<png::gray_pixel> image(dimensions.first, dimensions.second);
     float uScale = 1.0/dimensions.first;
     float vScale = 1.0/dimensions.second;
     vector<tuple<float,float,float,float>> uvwh;
@@ -141,8 +141,7 @@ int main(int argc, char* argv[]) {
 
         for (int iy = 0; iy < m.rows; iy++) {
         for (int ix = 0; ix < m.width; ix++) {
-            int g = m.buffer[iy*m.pitch+ix];
-            image[xy.second + iy][xy.first + ix] = png::rgb_pixel(g,g,g);
+            image[xy.second + iy][xy.first + ix] = m.buffer[iy*m.pitch+ix];
         }}
 
         uvwh.push_back(tuple<float,float,float,float>(
@@ -161,7 +160,7 @@ int main(int argc, char* argv[]) {
         distsize.second = outsize;
         distsize.first = ceil(((float)dimensions.first * outsize)/dimensions.second);
     }
-    png::image<png::rgb_pixel> dist (distsize.first, distsize.second);
+    png::image<png::gray_pixel> dist (distsize.first, distsize.second);
     distanceTransform(image, dist, dimensions, distsize, searchsize);
     dist.write(oname+".png");
 

@@ -80,11 +80,13 @@ class StringBuffer {
     var pen:Float;
     var staticDraw:Bool;
 
-    var vertexData:GLfloatArray;
-    var vertexArray:Int;
+    public var vertexData:GLfloatArray;
+    public var vertexArray:Int;
     public var vertexBuffer:Int;
     public var numVertices:Int = 0;
+    public var invalidated:Bool;
     public inline function reserve(numVerts:Int) {
+        invalidated = true;
         var current = numVertices * VERTEX_SIZE;
         if (!staticDraw) {
             var newsize = current + (numVerts * VERTEX_SIZE);
@@ -102,6 +104,7 @@ class StringBuffer {
 
     public inline function clear() {
         numVertices = 0;
+        invalidated = true;
     }
     public inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float) {
         vertexData[i+0] = x;
@@ -276,7 +279,7 @@ class FontRenderer {
                 float mask = texture(tex, fUV).r;
                 float E = fwidth(mask);
                 colour = fontColour;
-                colour.a = smoothstep(0.5-E,0.5+E, mask);
+                colour.a *= smoothstep(0.5-E,0.5+E, mask);
             }
         ");
         GL.compileShader(vShader);
@@ -315,7 +318,9 @@ class FontRenderer {
     }
 
     public inline function render(str:StringBuffer) {
-        return renderRaw(str.font.texture, str.vertexBuffer, str.numVertices);
+        renderRaw(str.font.texture, str.vertexBuffer, str.numVertices, str.invalidated ? str.vertexData : null);
+        str.invalidated = false;
+        return this;
     }
 
     public function renderRaw(text:GLuint, buffer:GLuint, numVertices:Int, ?vertexData:GLfloatArray=null) {
@@ -353,6 +358,8 @@ class Font {
 
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+        GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+        GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
     }
 
     public function destroy() {

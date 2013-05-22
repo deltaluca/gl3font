@@ -78,29 +78,32 @@ class StringBuffer {
 
     public var font:Font;
     var pen:Float;
+    var staticDraw:Bool;
 
     var vertexData:GLfloatArray;
     var vertexArray:Int;
-    var vertexBuffer:Int;
-    var numVertices:Int = 0;
-    inline function reserve(numVerts:Int) {
+    public var vertexBuffer:Int;
+    public var numVertices:Int = 0;
+    public inline function reserve(numVerts:Int) {
         var current = numVertices * VERTEX_SIZE;
-        var newsize = current + (numVerts * VERTEX_SIZE);
-        if (newsize > vertexData.count) {
-            var size = vertexData.count;
-            do size *= 2 while (size < newsize);
-            vertexData.resize(size);
-            GL.bindBuffer(GL.ARRAY_BUFFER, vertexBuffer);
-            GL.bufferData(GL.ARRAY_BUFFER, vertexData, GL.DYNAMIC_DRAW);
+        if (!staticDraw) {
+            var newsize = current + (numVerts * VERTEX_SIZE);
+            if (newsize > vertexData.count) {
+                var size = vertexData.count;
+                do size *= 2 while (size < newsize);
+                vertexData.resize(size);
+                GL.bindBuffer(GL.ARRAY_BUFFER, vertexBuffer);
+                GL.bufferData(GL.ARRAY_BUFFER, vertexData, GL.DYNAMIC_DRAW);
+            }
         }
         numVertices += numVerts;
         return current;
     }
 
-    inline function clear() {
+    public inline function clear() {
         numVertices = 0;
     }
-    inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float) {
+    public inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float) {
         vertexData[i+0] = x;
         vertexData[i+1] = y;
         vertexData[i+2] = u;
@@ -108,6 +111,7 @@ class StringBuffer {
     }
 
     public function new(font:Font, ?size:Null<Int>, staticDraw=false) {
+        this.staticDraw = staticDraw;
         this.font = font;
         if (size == null || size < 1) size = 1;
         vertexData = GL.allocBuffer(GL.FLOAT, VERTEX_SIZE*6*size);
@@ -310,14 +314,19 @@ class FontRenderer {
         return this;
     }
 
-    public function render(str:StringBuffer) {
-        GL.bindTexture(GL.TEXTURE_2D, str.font.texture);
-        GL.bindBuffer(GL.ARRAY_BUFFER, str.vertexBuffer);
+    public inline function render(str:StringBuffer) {
+        return renderRaw(str.font.texture, str.vertexBuffer, str.numVertices);
+    }
+
+    public function renderRaw(text:GLuint, buffer:GLuint, numVertices:Int, ?vertexData:GLfloatArray=null) {
+        GL.bindTexture(GL.TEXTURE_2D, text);
+        GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
         GL.vertexAttribPointer(0, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 0);
         GL.vertexAttribPointer(1, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 2*4);
 
-        GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(str.vertexData, 0, str.numVertices*StringBuffer.VERTEX_SIZE));
-        GL.drawArrays(GL.TRIANGLES, 0, str.numVertices);
+        if (vertexData != null)
+            GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(vertexData, 0, numVertices*StringBuffer.VERTEX_SIZE));
+        GL.drawArrays(GL.TRIANGLES, 0, numVertices);
         return this;
     }
 
@@ -331,8 +340,8 @@ class FontRenderer {
 class Font {
     public var info:FontInfo;
     public var texture:GLuint;
-    public function new(datPath:String, dist:String) {
-        info = new FontInfo(datPath);
+    public function new(datPath:Null<String>, dist:String) {
+        info = if (datPath == null) null else new FontInfo(datPath);
         texture = GL.genTextures(1)[0];
         GL.bindTexture(GL.TEXTURE_2D, texture);
 

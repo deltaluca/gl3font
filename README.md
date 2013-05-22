@@ -74,6 +74,14 @@ would be encoded in the .dat file as
 
 Can check the free, and dejavu subdirectories for example outputs.
 
+#### Alternative usage.
+
+    ./ttfcompile -transform input.png search-radius output-size [-o=output-name]
+
+To convert an input greyscale png (high resolution) to a distance field as per ttf transformation.
+
+No data output is made (obviously).
+
 ## gl3font API:
 
 Simple API for rendering said fonts generated with ttfcompile using ogl, all types included with
@@ -85,7 +93,9 @@ Font class used to load and parse font files from ttfcompile.
 ```
 class Font {
     // Load font files, create opengl texture (must have a context!)
-    function new(path_to_dat:String, path_to_png:String);
+    // Can pass null for .dat path if wanting to simply load
+    // the distance map to a texture for use.
+    function new(path_to_dat:Null<String>, path_to_png:String);
 
     // ID for the opengl texture generated.
     var texture : GLuint;
@@ -159,6 +169,9 @@ class FontRenderer {
 
     // Render a string, must be called being begin() and end()
     function render(string:StringBuffer) : FontRenderer;
+
+    // Render arbitrary vertex data (with distance field texture)
+    function renderRaw(texture:GLuint, vertexBuffer:GLuint) : FontRenderer;
 
     // Destroy GL state, can't use renderer following this call.
     function destroy();

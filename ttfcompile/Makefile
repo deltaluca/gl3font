@@ -1,4 +1,4 @@
-CFLAGS=`pkg-config --libs freetype2 icu-uc icu-io --cflags` -std=c++11 -O3
+CFLAGS=`pkg-config --libs freetype2 icu-uc icu-io --cflags` -std=c++11 -g
 LFLAGS=`pkg-config --libs freetype2 icu-uc icu-io libpng`
 
 all:

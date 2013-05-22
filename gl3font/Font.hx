@@ -109,7 +109,7 @@ class StringBuffer {
 
     public function new(font:Font, ?size:Null<Int>, staticDraw=false) {
         this.font = font;
-        if (size == null) size = 1;
+        if (size == null || size < 1) size = 1;
         vertexData = GL.allocBuffer(GL.FLOAT, VERTEX_SIZE*6*size);
         vertexArray = GL.genVertexArrays(1)[0];
         GL.bindVertexArray(vertexArray);
@@ -135,8 +135,9 @@ class StringBuffer {
         return lines;
     }
 
-    public function set(string:String, ?align:FontAlign) {
+    public function set(string:String, ?align:FontAlign):Vec4 {
         clear();
+        if (string.length == 0) return [0,0,0,0];
         var lines = getLines(string);
         var charCount = 0; for (l in lines) charCount += l.length;
         var index = reserve(6*charCount);
@@ -189,6 +190,11 @@ class StringBuffer {
                 [for (m in metrics) [-max/2,max/m[1]]];
         };
 
+        var minx = 1e100;
+        var maxx = -1e100;
+        var miny = 1e100;
+        var maxy = -1e100;
+
         var peny = 0.0;
         var i = -1;
         for (line in lines) {
@@ -223,9 +229,16 @@ class StringBuffer {
 
                 pen += metric.advance*scale;
                 prev_index = glyph;
+
+                if (x0 < minx) minx = x0;
+                if (x1 > maxx) maxx = x1;
+                if (y0 < miny) miny = y0;
+                if (y1 > maxy) maxy = y1;
             }
             peny += font.info.height;
         }
+
+        return [minx, miny, maxx-minx, maxy-miny];
     }
 }
 
@@ -282,16 +295,19 @@ class FontRenderer {
 
     public function setTransform(mat:Mat4) {
         GL.uniformMatrix4fv(proj, false, mat);
+        return this;
     }
 
     public function setColour(colour:Vec4) {
         GL.uniform4fv(this.colour, colour);
+        return this;
     }
 
     public function begin() {
         GL.useProgram(program);
         GL.enableVertexAttribArray(0);
         GL.enableVertexAttribArray(1);
+        return this;
     }
 
     public function render(str:StringBuffer) {
@@ -302,11 +318,13 @@ class FontRenderer {
 
         GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(str.vertexData, 0, str.numVertices*StringBuffer.VERTEX_SIZE));
         GL.drawArrays(GL.TRIANGLES, 0, str.numVertices);
+        return this;
     }
 
     public function end() {
         GL.disableVertexAttribArray(0);
         GL.disableVertexAttribArray(1);
+        return this;
     }
 }
 

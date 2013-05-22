@@ -119,7 +119,7 @@ class FontInfo {
 
 Per character metrics from .dat file.
 ```
-class Matric {
+class Metric {
     // Horizontal offset after rendering character.
     var advance : Float;
 
@@ -146,19 +146,19 @@ class FontRenderer {
     function new();
 
     // Set transformation matrix for rendering font to the screen.
-    function setTransform(mat:Mat4);
+    function setTransform(mat:Mat4) : FontRenderer;
 
     // Set font colour for rendering
-    function setColour(colour:Vec4);
+    function setColour(colour:Vec4) : FontRenderer;
 
     // Begin rendering fonts (Selects gl program, enables vertex attrib arrays)
-    function begin();
+    function begin() : FontRenderer;
 
-    // End rendering of fonts (disablsed vertex attrib arrays)
-    function end();
+    // End rendering of fonts (disables vertex attrib arrays)
+    function end() : FontRenderer;
 
     // Render a string, must be called being begin() and end()
-    function render(string:StringBuffer);
+    function render(string:StringBuffer) : FontRenderer;
 
     // Destroy GL state, can't use renderer following this call.
     function destroy();
@@ -181,7 +181,9 @@ class StringBuffer {
 
     // Set StringBuffer to render the given string, using given alignment.
     // Multiline strings (delimited by \n) permitted.
-    function set(string:String, ?align:FontAlign=AlignLeft);
+    //
+    // Returns Vec4 for text bounds (x,y,width,height)
+    function set(string:String, ?align:FontAlign=AlignLeft) : Vec4;
 
     // Destroy GL state, can't use string buffer following this call.
     function destroy();

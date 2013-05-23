@@ -258,9 +258,9 @@ class FontRenderer {
         var vShader = GL.createShader(GL.VERTEX_SHADER);
         var fShader = GL.createShader(GL.FRAGMENT_SHADER);
         GL.shaderSource(vShader, "
-            #version 330 core
-            layout(location = 0) in vec2 vPos;
-            layout(location = 1) in vec2 vUV;
+            #version 130
+            in vec2 vPos;
+            in vec2 vUV;
             uniform mat4 proj;
             out vec2 fUV;
             void main() {
@@ -269,7 +269,7 @@ class FontRenderer {
             }
         ");
         GL.shaderSource(fShader, "
-            #version 330 core
+            #version 130
             in vec2 fUV;
             out vec4 colour;
             uniform sampler2D tex;
@@ -288,7 +288,11 @@ class FontRenderer {
         program = GL.createProgram();
         GL.attachShader(program, vShader);
         GL.attachShader(program, fShader);
+
+        GL.bindAttribLocation(program, 0, "vPos");
+        GL.bindAttribLocation(program, 1, "vUV");
         GL.linkProgram(program);
+
         GL.deleteShader(vShader);
         GL.deleteShader(fShader);
 

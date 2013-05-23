@@ -30,8 +30,8 @@ void distanceTransform(const png::image<png::gray_pixel>& image,
 
 int main(int argc, char* argv[]) {
     if (argc < 5) {
-        printf("ttf2json fontpath.ttf pxheight gap searchsize outsize [-chars=file] [-o=outname]\n");
-        printf("ttf2json -transform image.png searchsize outsize [-o=outname]\n");
+        printf("ttfcompile fontpath.ttf pxheight gap searchsize outsize [-chars=file] [-o=outname]\n");
+        printf("ttfcompile -transform image.png searchsize outsize [-o=outname]\n");
         return 1;
     }
 

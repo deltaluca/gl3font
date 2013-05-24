@@ -75,6 +75,15 @@ enum FontAlign {
     AlignCentreJustified;
 }
 
+typedef LineLayout = {
+    bounds:Vec4,
+    chars:Array<Vec4>
+}
+typedef TextLayout = {
+    bounds:Vec4,
+    lines:Array<LineLayout>
+};
+
 @:allow(gl3font)
 class StringBuffer implements LazyEnv implements MaybeEnv {
     public static inline var VERTEX_SIZE = 4;
@@ -145,9 +154,19 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         return lines;
     }
 
-    public function set(string:String, ?align:Maybe<FontAlign>):Vec4 {
+    public function set(string:String, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
+        var layout:Maybe<TextLayout>;
+        layout = if (computeLayout) { bounds: new Vec4([1e100,1e100,-1e100,-1e100]), lines: [] } else null;
+
         clear();
-        if (string.length == 0) return [0,0,0,0];
+
+        if (string.length == 0) {
+            if (computeLayout) {
+                var bounds = layout.extract().bounds;
+                bounds.x = bounds.y = bounds.z = bounds.w = 0;
+            }
+            return layout;
+        }
         if (font.info == null) throw "Font has no metrics info";
         var info = font.info.extract();
 
@@ -203,11 +222,6 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 [for (m in metrics) [-max/2,max/m[1]]];
         };
 
-        var minx = 1e100;
-        var maxx = -1e100;
-        var miny = 1e100;
-        var maxy = -1e100;
-
         var peny = 0.0;
         var i = -1;
         for (line in lines) {
@@ -216,6 +230,10 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var scale = xform[i][1];
             var fst = true;
             var prev_index = -1;
+
+            var lineLayout:Maybe<LineLayout>;
+            lineLayout = if (computeLayout) { bounds:new Vec4([1e100,1e100,-1e100,-1e100]), chars: [] } else null;
+
             for (char in line) {
                 var glyph = info.idmap[char];
                 var metric = info.metrics[glyph];
@@ -243,15 +261,39 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 pen += metric.advance*scale;
                 prev_index = glyph;
 
-                if (x0 < minx) minx = x0;
-                if (x1 > maxx) maxx = x1;
-                if (y0 < miny) miny = y0;
-                if (y1 > maxy) maxy = y1;
+                if (computeLayout) {
+                    var bounds = layout.extract().bounds;
+                    if (x0 < bounds.x) bounds.x = x0;
+                    if (y0 < bounds.y) bounds.y = y0;
+                    if (x1 > bounds.z) bounds.z = x1;
+                    if (y1 > bounds.w) bounds.w = y1;
+
+                    bounds = lineLayout.extract().bounds;
+                    if (x0 < bounds.x) bounds.x = x0;
+                    if (y0 < bounds.y) bounds.y = y0;
+                    if (x1 > bounds.z) bounds.z = x1;
+                    if (y1 > bounds.w) bounds.w = y1;
+
+                    lineLayout.extract().chars.push(new Vec4([x0, y0, x1-x0, y1-y0]));
+                }
             }
             peny += info.height;
+
+            if (computeLayout) {
+                var bounds = lineLayout.extract().bounds;
+                bounds.z -= bounds.x;
+                bounds.w -= bounds.y;
+                layout.extract().lines.push(lineLayout.extract());
+            }
         }
 
-        return [minx, miny, maxx-minx, maxy-miny];
+        if (computeLayout) {
+            var bounds = layout.extract().bounds;
+            bounds.z -= bounds.x;
+            bounds.w -= bounds.y;
+        }
+
+        return layout;
     }
 }
 

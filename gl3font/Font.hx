@@ -4,6 +4,9 @@ import ogl.GL;
 import ogl.GLM;
 import ogl.GLArray;
 
+import goodies.Lazy;
+import goodies.Maybe;
+
 class Metric {
     public var advance:Float;
     public var left:Float;
@@ -73,10 +76,10 @@ enum FontAlign {
 }
 
 @:allow(gl3font)
-class StringBuffer {
+class StringBuffer implements LazyEnv implements MaybeEnv {
     public static inline var VERTEX_SIZE = 4;
 
-    public var font:Font;
+    @:lazyVar public var font:Font;
     var pen:Float;
     var staticDraw:Bool;
 
@@ -113,10 +116,10 @@ class StringBuffer {
         vertexData[i+3] = v;
     }
 
-    public function new(font:Font, ?size:Null<Int>, staticDraw=false) {
+    public function new(font:Maybe<Font>, ?size:Maybe<Int>, staticDraw=false) {
         this.staticDraw = staticDraw;
-        this.font = font;
-        if (size == null || size < 1) size = 1;
+        if (font != null) this.font = font.extract();
+        var size = size.or(1); if (size < 1) size = 1;
         vertexData = GL.allocBuffer(GL.FLOAT, VERTEX_SIZE*6*size);
         vertexArray = GL.genVertexArrays(1)[0];
         GL.bindVertexArray(vertexArray);
@@ -142,13 +145,16 @@ class StringBuffer {
         return lines;
     }
 
-    public function set(string:String, ?align:FontAlign):Vec4 {
+    public function set(string:String, ?align:Maybe<FontAlign>):Vec4 {
         clear();
         if (string.length == 0) return [0,0,0,0];
+        if (font.info == null) throw "Font has no metrics info";
+        var info = font.info.extract();
+
         var lines = getLines(string);
         var charCount = 0; for (l in lines) charCount += l.length;
         var index = reserve(6*charCount);
-        if (align == null) align = AlignLeft;
+        var align = align.or(AlignLeft);
 
         var metrics = [];
         for (line in lines) {
@@ -159,9 +165,9 @@ class StringBuffer {
             var fst = true;
             var pen = 0.0;
             for (char in line) {
-                var glyph = font.info.idmap[char];
-                var metric = font.info.metrics[glyph];
-                if (!fst) pen += font.info.kerning[prev_index][glyph];
+                var glyph = info.idmap[char];
+                var metric = info.metrics[glyph];
+                if (!fst) pen += info.kerning[prev_index][glyph];
                 fst = false;
 
                 var x0 = metric.left + pen;
@@ -211,9 +217,9 @@ class StringBuffer {
             var fst = true;
             var prev_index = -1;
             for (char in line) {
-                var glyph = font.info.idmap[char];
-                var metric = font.info.metrics[glyph];
-                if (!fst) pen += font.info.kerning[prev_index][glyph]*scale;
+                var glyph = info.idmap[char];
+                var metric = info.metrics[glyph];
+                if (!fst) pen += info.kerning[prev_index][glyph]*scale;
                 fst = false;
 
                 var x0 = metric.left + pen;
@@ -242,14 +248,14 @@ class StringBuffer {
                 if (y0 < miny) miny = y0;
                 if (y1 > maxy) maxy = y1;
             }
-            peny += font.info.height;
+            peny += info.height;
         }
 
         return [minx, miny, maxx-minx, maxy-miny];
     }
 }
 
-class FontRenderer {
+class FontRenderer implements LazyEnv implements MaybeEnv {
     var program:GLuint;
     var proj:GLuint;
     var colour:GLuint;
@@ -327,14 +333,14 @@ class FontRenderer {
         return this;
     }
 
-    public function renderRaw(text:GLuint, buffer:GLuint, numVertices:Int, ?vertexData:GLfloatArray=null) {
+    public function renderRaw(text:GLuint, buffer:GLuint, numVertices:Int, ?vertexData:Maybe<GLfloatArray>=null) {
         GL.bindTexture(GL.TEXTURE_2D, text);
         GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
         GL.vertexAttribPointer(0, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 0);
         GL.vertexAttribPointer(1, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 2*4);
 
         if (vertexData != null)
-            GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(vertexData, 0, numVertices*StringBuffer.VERTEX_SIZE));
+            GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(vertexData.extract(), 0, numVertices*StringBuffer.VERTEX_SIZE));
         GL.drawArrays(GL.TRIANGLES, 0, numVertices);
         return this;
     }
@@ -347,10 +353,10 @@ class FontRenderer {
 }
 
 class Font {
-    public var info:FontInfo;
+    public var info:Maybe<FontInfo>;
     public var texture:GLuint;
-    public function new(datPath:Null<String>, dist:String) {
-        info = if (datPath == null) null else new FontInfo(datPath);
+    public function new(datPath:Maybe<String>, dist:String) {
+        info = datPath.runOr(function (x) new FontInfo(x), null);
         texture = GL.genTextures(1)[0];
         GL.bindTexture(GL.TEXTURE_2D, texture);
 

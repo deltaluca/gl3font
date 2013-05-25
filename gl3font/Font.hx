@@ -76,8 +76,8 @@ enum FontAlign {
 }
 
 typedef LineLayout = {
-    bounds:Vec4,
-    chars:Array<Vec4>
+    bounds:Vec2,
+    chars:Array<Vec2>
 }
 typedef TextLayout = {
     bounds:Vec4,
@@ -235,7 +235,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var prev_index = -1;
 
             var lineLayout:Maybe<LineLayout>;
-            lineLayout = if (computeLayout) { bounds:new Vec4([1e100,1e100,-1e100,-1e100]), chars: [] } else null;
+            lineLayout = if (computeLayout) { bounds:new Vec2([1e100,-1e100]), chars: [] } else null;
 
             for (char in line) {
                 var glyph = info.idmap[char];
@@ -269,34 +269,21 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                     y0 = peny - info.ascender;
                     var bounds = layout.extract().bounds;
                     if (x0 < bounds.x) bounds.x = x0;
-                    if (y0 < bounds.y) bounds.y = y0;
-                    if (x1 > bounds.z) bounds.z = x1;
-                    if (y1 > bounds.w) bounds.w = y1;
+                    if (x1 > bounds.y) bounds.y = x1;
 
-                    bounds = lineLayout.extract().bounds;
+                    var bounds = lineLayout.extract().bounds;
                     if (x0 < bounds.x) bounds.x = x0;
-                    if (y0 < bounds.y) bounds.y = y0;
-                    if (x1 > bounds.z) bounds.z = x1;
-                    if (y1 > bounds.w) bounds.w = y1;
+                    if (x1 > bounds.y) bounds.y = x1;
 
-                    lineLayout.extract().chars.push(new Vec4([x0, y0, x1-x0, y1-y0]));
+                    lineLayout.extract().chars.push(new Vec2([x0, x1-x0]));
                 }
             }
 
             if (computeLayout) {
                 var bounds = lineLayout.extract().bounds;
-                if (lineLayout.extract().chars.length != 0) {
-                    bounds.z -= bounds.x;
-                    bounds.w -= bounds.y;
-                }
-                else {
-                    bounds.x = bounds.z = 0;
-                    bounds.y = peny - info.ascender;
-                    bounds.w = info.descender + info.ascender;
-                    var gbounds = layout.extract().bounds;
-                    if (bounds.y < gbounds.y) gbounds.y = bounds.y;
-                    if (bounds.y + bounds.w > gbounds.w) gbounds.w = bounds.y + bounds.w;
-                }
+                if (lineLayout.extract().chars.length != 0)
+                     bounds.y -= bounds.x;
+                else bounds.x = bounds.y = 0;
                 layout.extract().lines.push(lineLayout.extract());
             }
 
@@ -307,14 +294,15 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var bounds = layout.extract().bounds;
             if (layout.extract().lines.length != 0) {
                 if (bounds.x > bounds.z) bounds.x = bounds.z = 0;
-                else bounds.z -= bounds.x;
-                bounds.w -= bounds.y;
+                else {
+                    if (bounds.x < 0) bounds.x = 0;
+                    bounds.z -= bounds.x;
+                }
             }
-            else {
-                bounds.x = bounds.z = 0;
-                bounds.w = info.height;
-                bounds.y = -bounds.w;
-            }
+            else bounds.x = bounds.z = 0;
+
+            bounds.y = -info.ascender;
+            bounds.w = (info.ascender + info.descender) * lines.length;
         }
 
         return layout;

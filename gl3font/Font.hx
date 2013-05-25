@@ -281,16 +281,30 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
             if (computeLayout) {
                 var bounds = lineLayout.extract().bounds;
-                bounds.z -= bounds.x;
-                bounds.w -= bounds.y;
+                if (lineLayout.extract().chars.length != 0) {
+                    bounds.z -= bounds.x;
+                    bounds.w -= bounds.y;
+                }
+                else {
+                    bounds.x = bounds.z = 0;
+                    bounds.w = info.height;
+                    bounds.y = peny - bounds.w;
+                }
                 layout.extract().lines.push(lineLayout.extract());
             }
         }
 
         if (computeLayout) {
             var bounds = layout.extract().bounds;
-            bounds.z -= bounds.x;
-            bounds.w -= bounds.y;
+            if (layout.extract().lines.length != 0) {
+                bounds.z -= bounds.x;
+                bounds.w -= bounds.y;
+            }
+            else {
+                bounds.x = bounds.z = 0;
+                bounds.w = info.height;
+                bounds.y = -bounds.w;
+            }
         }
 
         return layout;

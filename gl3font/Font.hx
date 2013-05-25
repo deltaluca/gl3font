@@ -155,6 +155,9 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
     }
 
     public function set(string:String, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
+        if (font.info == null) throw "Font has no metrics info";
+        var info = font.info.extract();
+
         var layout:Maybe<TextLayout>;
         layout = if (computeLayout) { bounds: new Vec4([1e100,1e100,-1e100,-1e100]), lines: [] } else null;
 
@@ -163,12 +166,12 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         if (string.length == 0) {
             if (computeLayout) {
                 var bounds = layout.extract().bounds;
-                bounds.x = bounds.y = bounds.z = bounds.w = 0;
+                bounds.x = bounds.z = 0;
+                bounds.y = - info.ascender;
+                bounds.w = info.descender + info.ascender;
             }
             return layout;
         }
-        if (font.info == null) throw "Font has no metrics info";
-        var info = font.info.extract();
 
         var lines = getLines(string);
         var charCount = 0; for (l in lines) charCount += l.length;
@@ -279,7 +282,6 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                     lineLayout.extract().chars.push(new Vec4([x0, y0, x1-x0, y1-y0]));
                 }
             }
-            peny += info.height;
 
             if (computeLayout) {
                 var bounds = lineLayout.extract().bounds;
@@ -289,17 +291,23 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 }
                 else {
                     bounds.x = bounds.z = 0;
-                    bounds.w = info.height;
-                    bounds.y = peny - bounds.w;
+                    bounds.y = peny - info.ascender;
+                    bounds.w = info.descender + info.ascender;
+                    var gbounds = layout.extract().bounds;
+                    if (bounds.y < gbounds.y) gbounds.y = bounds.y;
+                    if (bounds.y + bounds.w > gbounds.w) gbounds.w = bounds.y + bounds.w;
                 }
                 layout.extract().lines.push(lineLayout.extract());
             }
+
+            peny += info.height;
         }
 
         if (computeLayout) {
             var bounds = layout.extract().bounds;
             if (layout.extract().lines.length != 0) {
-                bounds.z -= bounds.x;
+                if (bounds.x > bounds.z) bounds.x = bounds.z = 0;
+                else bounds.z -= bounds.x;
                 bounds.w -= bounds.y;
             }
             else {

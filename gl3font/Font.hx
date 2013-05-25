@@ -262,6 +262,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 prev_index = glyph;
 
                 if (computeLayout) {
+                    y1 = peny + info.descender;
+                    y0 = peny - info.ascender;
                     var bounds = layout.extract().bounds;
                     if (x0 < bounds.x) bounds.x = x0;
                     if (y0 < bounds.y) bounds.y = y0;

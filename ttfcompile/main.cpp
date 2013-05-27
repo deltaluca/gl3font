@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 
     // Parse arguments
     string fontpath = argv[1];
-    string oname;
+    string oname = fontpath;
     string charset = u8"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ";
     for (int i = 0; i < argc; i++) {
         string arg = argv[i];
@@ -60,7 +60,6 @@ int main(int argc, char* argv[]) {
         dimensions.second = image.get_height();
     }
     else {
-        oname = fontpath;
         int pxheight = atoi(argv[2]);
         int gap      = atoi(argv[3]);
         searchsize   = atoi(argv[4]);

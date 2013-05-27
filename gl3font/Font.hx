@@ -84,14 +84,80 @@ typedef TextLayout = {
     lines:Array<LineLayout>
 };
 
+typedef GLSubString = {sub:String, col:Vec4};
+typedef GLString = Array<GLSubString>;
+
+typedef GLISubString = {sub:Array<Int>, col:Vec4};
+typedef GLIString = Array<GLISubString>;
+
+class GLStringUtils {
+    public static function len(s:GLString) {
+        var len = 0;
+        for (sub in s) len += haxe.Utf8.length(sub.sub);
+        return len;
+    }
+    public static function substr(s:GLString, ind:Int, count:Int=-1) {
+        var last = if (count < 0) len(s) else ind + count;
+        var ret = [];
+        var i = 0;
+        for (sub in s) {
+            var osub = new haxe.Utf8(); var cnt = 0;
+            for (j in 0...haxe.Utf8.length(sub.sub)) {
+                if (i >= last) {
+                    if (cnt != 0) {
+                        ret.push({sub:osub.toString(), col:sub.col});
+                        cnt = 0;
+                    }
+                    break;
+                }
+                if (i >= ind) {
+                    osub.addChar(haxe.Utf8.charCodeAt(sub.sub, j));
+                    cnt++;
+                }
+                i++;
+            }
+            if (cnt != 0) ret.push({sub:osub.toString(), col:sub.col});
+            if (i >= last) break;
+        }
+        return ret;
+    }
+    public static function charCodeAt(s:GLString, ind:Int):Int {
+        var i = 0;
+        for (sub in s) {
+            for (j in 0...haxe.Utf8.length(sub.sub)) {
+                if (i == ind) return haxe.Utf8.charCodeAt(sub.sub, j);
+                i++;
+            }
+        }
+        return -1;
+    }
+    public static function concat(s:GLString, t:GLString) {
+        if (s.length > 0 && t.length > 0) {
+            var sn = s[s.length - 1];
+            var t0 = t[0];
+            if (sn.col == t0.col) {
+                t0.sub = sn.sub + t0.sub;
+                s.pop();
+            }
+        }
+        return s.concat(t);
+    }
+    public static function str(s:GLString) {
+        var ret = "";
+        for (sub in s) ret += sub.sub;
+        return ret;
+    }
+}
+
 @:allow(gl3font)
 class StringBuffer implements LazyEnv implements MaybeEnv {
-    public static inline var VERTEX_SIZE = 4;
+    public static inline var VERTEX_SIZE = 8;
 
     @:lazyVar public var font:Font;
     var pen:Float;
     var staticDraw:Bool;
 
+    public var colours:Array<Vec4>;
     public var vertexData:GLfloatArray;
     public var vertexArray:Int;
     public var vertexBuffer:Int;
@@ -118,14 +184,19 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         numVertices = 0;
         invalidated = true;
     }
-    public inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float) {
+    public inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float, col:Vec4) {
         vertexData[i+0] = x;
         vertexData[i+1] = y;
         vertexData[i+2] = u;
         vertexData[i+3] = v;
+        vertexData[i+4] = col.r;
+        vertexData[i+5] = col.g;
+        vertexData[i+6] = col.b;
+        vertexData[i+7] = col.a;
     }
 
     public function new(font:Maybe<Font>, ?size:Maybe<Int>, staticDraw=false) {
+        invalidated = true;
         this.staticDraw = staticDraw;
         if (font != null) this.font = font.extract();
         var size = size.or(1); if (size < 1) size = 1;
@@ -136,6 +207,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         vertexBuffer = GL.genBuffers(1)[0];
         GL.bindBuffer(GL.ARRAY_BUFFER, vertexBuffer);
         GL.bufferData(GL.ARRAY_BUFFER, vertexData, staticDraw ? GL.STATIC_DRAW : GL.DYNAMIC_DRAW);
+        colours = [];
     }
 
     public function destroy() {
@@ -143,18 +215,25 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         GL.deleteBuffers([vertexBuffer]);
     }
 
-    public function getLines(string:String):Array<Array<Int>> {
+    public function getLines(string:GLString):Array<GLIString> {
         var line = []; var lines = [line];
-        for (i in 0...haxe.Utf8.length(string)) {
-            var c = haxe.Utf8.charCodeAt(string, i);
-            if (c == '\n'.code)
-                lines.push(line = []);
-            else line.push(c);
+        for (sub in string) {
+            var osub = {sub:[], col:sub.col};
+            for (i in 0...haxe.Utf8.length(sub.sub)) {
+                var c = haxe.Utf8.charCodeAt(sub.sub, i);
+                if (c == '\n'.code) {
+                    if (osub.sub.length != 0) line.push(osub);
+                    lines.push(line = []);
+                    osub = {sub:[], col:sub.col};
+                }
+                else osub.sub.push(c);
+            }
+            if (osub.sub.length != 0) line.push(osub);
         }
         return lines;
     }
 
-    public function set(string:String, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
+    public function set(string:GLString, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
         if (font.info == null) throw "Font has no metrics info";
         var info = font.info.extract();
 
@@ -174,7 +253,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         }
 
         var lines = getLines(string);
-        var charCount = 0; for (l in lines) charCount += l.length;
+        var charCount = 0; for (l in lines) for (s in l) charCount += s.sub.length;
         var index = reserve(6*charCount);
         var align = align.or(AlignLeft);
 
@@ -186,7 +265,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var prev_index:Int = -1;
             var fst = true;
             var pen = 0.0;
-            for (char in line) {
+            for (s in line) {
+            for (char in s.sub) {
                 var glyph = info.idmap[char];
                 var metric = info.metrics[glyph];
                 if (!fst) pen += info.kerning[prev_index][glyph];
@@ -200,7 +280,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
                 if (x0 < minx) minx = x0;
                 if (x1 > maxx) maxx = x1;
-            }
+            }}
             metrics.push([minx, maxx-minx]);
         }
 
@@ -237,7 +317,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var lineLayout:Maybe<LineLayout>;
             lineLayout = if (computeLayout) { bounds:new Vec2([1e100,-1e100]), chars: [] } else null;
 
-            for (char in line) {
+            for (s in line) {
+            for (char in s.sub) {
                 var glyph = info.idmap[char];
                 var metric = info.metrics[glyph];
                 if (!fst) pen += info.kerning[prev_index][glyph]*scale;
@@ -253,13 +334,13 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 var u1 = u0 + metric.w;
                 var v1 = v0 + metric.h;
 
-                vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
-                vertex(index, x1,y1, u1,v1); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
+                vertex(index, x0,y1, u0,v1, s.col); index += VERTEX_SIZE;
+                vertex(index, x1,y1, u1,v1, s.col); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0, s.col); index += VERTEX_SIZE;
 
-                vertex(index, x0,y1, u0,v1); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0); index += VERTEX_SIZE;
-                vertex(index, x0,y0, u0,v0); index += VERTEX_SIZE;
+                vertex(index, x0,y1, u0,v1, s.col); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0, s.col); index += VERTEX_SIZE;
+                vertex(index, x0,y0, u0,v0, s.col); index += VERTEX_SIZE;
 
                 pen += metric.advance*scale;
                 prev_index = glyph;
@@ -269,7 +350,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                     y0 = peny - info.ascender;
                     var bounds = layout.extract().bounds;
                     if (x0 < bounds.x) bounds.x = x0;
-                    if (x1 > bounds.y) bounds.y = x1;
+                    if (x1 > bounds.z) bounds.z = x1;
 
                     var bounds = lineLayout.extract().bounds;
                     if (x0 < bounds.x) bounds.x = x0;
@@ -277,7 +358,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
                     lineLayout.extract().chars.push(new Vec2([x0, x1-x0]));
                 }
-            }
+            }}
 
             if (computeLayout) {
                 var bounds = lineLayout.extract().bounds;
@@ -294,15 +375,12 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var bounds = layout.extract().bounds;
             if (layout.extract().lines.length != 0) {
                 if (bounds.x > bounds.z) bounds.x = bounds.z = 0;
-                else {
-                    if (bounds.x < 0) bounds.x = 0;
-                    bounds.z -= bounds.x;
-                }
+                else bounds.z -= bounds.x;
             }
             else bounds.x = bounds.z = 0;
 
             bounds.y = -info.ascender;
-            bounds.w = (info.ascender + info.descender) * lines.length;
+            bounds.w = (info.ascender - info.descender) * lines.length;
         }
 
         return layout;
@@ -312,7 +390,6 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 class FontRenderer implements LazyEnv implements MaybeEnv {
     var program:GLuint;
     var proj:GLuint;
-    var colour:GLuint;
 
     public function new() {
         var vShader = GL.createShader(GL.VERTEX_SHADER);
@@ -321,24 +398,27 @@ class FontRenderer implements LazyEnv implements MaybeEnv {
             #version 130
             in vec2 vPos;
             in vec2 vUV;
+            in vec4 vColour;
             uniform mat4 proj;
             out vec2 fUV;
+            out vec4 fColour;
             void main() {
                 gl_Position = proj*vec4(vPos,0,1);
                 fUV = vUV;
+                fColour = vColour;
             }
         ");
         GL.shaderSource(fShader, "
             #version 130
             in vec2 fUV;
+            in vec4 fColour;
             out vec4 colour;
             uniform sampler2D tex;
-            uniform vec4 fontColour;
 
             void main() {
+                colour = fColour;
                 float mask = texture(tex, fUV).r;
                 float E = fwidth(mask);
-                colour = fontColour;
                 colour.a *= smoothstep(0.5-E,0.5+E, mask);
             }
         ");
@@ -351,13 +431,13 @@ class FontRenderer implements LazyEnv implements MaybeEnv {
 
         GL.bindAttribLocation(program, 0, "vPos");
         GL.bindAttribLocation(program, 1, "vUV");
+        GL.bindAttribLocation(program, 2, "vColour");
         GL.linkProgram(program);
 
         GL.deleteShader(vShader);
         GL.deleteShader(fShader);
 
         proj = GL.getUniformLocation(program, "proj");
-        colour = GL.getUniformLocation(program, "fontColour");
     }
 
     public function destroy() {
@@ -369,15 +449,11 @@ class FontRenderer implements LazyEnv implements MaybeEnv {
         return this;
     }
 
-    public function setColour(colour:Vec4) {
-        GL.uniform4fv(this.colour, colour);
-        return this;
-    }
-
     public function begin() {
         GL.useProgram(program);
         GL.enableVertexAttribArray(0);
         GL.enableVertexAttribArray(1);
+        GL.enableVertexAttribArray(2);
         return this;
     }
 
@@ -390,8 +466,9 @@ class FontRenderer implements LazyEnv implements MaybeEnv {
     public function renderRaw(text:GLuint, buffer:GLuint, numVertices:Int, ?vertexData:Maybe<GLfloatArray>=null) {
         GL.bindTexture(GL.TEXTURE_2D, text);
         GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
-        GL.vertexAttribPointer(0, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 0);
+        GL.vertexAttribPointer(0, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 0*4);
         GL.vertexAttribPointer(1, 2, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 2*4);
+        GL.vertexAttribPointer(2, 4, GL.FLOAT, false, StringBuffer.VERTEX_SIZE*4, 4*4);
 
         if (vertexData != null)
             GL.bufferSubData(GL.ARRAY_BUFFER, 0, GLfloatArray.view(vertexData.extract(), 0, numVertices*StringBuffer.VERTEX_SIZE));
@@ -402,6 +479,7 @@ class FontRenderer implements LazyEnv implements MaybeEnv {
     public function end() {
         GL.disableVertexAttribArray(0);
         GL.disableVertexAttribArray(1);
+        GL.disableVertexAttribArray(2);
         return this;
     }
 }

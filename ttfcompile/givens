@@ -1,7 +1,7 @@
 #!/bin/bash
 
 height=250
-gap=3
+gap=4
 search=40
 out=512
 

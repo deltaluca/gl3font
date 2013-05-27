@@ -5,6 +5,8 @@ import ogl.GLM;
 import glfw3.GLFW;
 import gl3font.Font;
 
+using gl3font.Font.GLStringUtils;
+
 class Main {
     static function main() {
         GLFW.init();
@@ -20,7 +22,13 @@ class Main {
         var font = new Font('$face.dat', '$face.png');
 
         var buf = new StringBuffer(font);
-        buf.set("µ®½§¥¹»ßðØæÐË¶º!", AlignCentre);
+        var str = [{sub:"µ®½§¥¹»ß", col:new Vec4([1,0,0,1])}, {sub:"ðØæÐË¶º!", col:new Vec4([1,1,1,1])}];
+        buf.set(str, AlignCentre);
+
+        trace(str.str());
+        trace(str.substr(0,4).str());
+        trace(str.substr(4,-1).str());
+        trace(str.substr(0,4).concat(str.substr(4,-1)).str());
 
         var renderer = new FontRenderer();
         while (!GLFW.windowShouldClose(window)) {
@@ -36,7 +44,6 @@ class Main {
             GL.clear(GL.COLOR_BUFFER_BIT);
 
             renderer.begin();
-            renderer.setColour([1,1,1,1]);
             renderer.setTransform(
                 Mat3x2.viewportMap(800, 600) *
                 Mat3x2.translate(x, y) *

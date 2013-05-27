@@ -4,8 +4,7 @@ import ogl.GL;
 import ogl.GLM;
 import glfw3.GLFW;
 import gl3font.Font;
-
-using gl3font.Font.GLStringUtils;
+import gl3font.GLString;
 
 class Main {
     static function main() {
@@ -22,13 +21,8 @@ class Main {
         var font = new Font('$face.dat', '$face.png');
 
         var buf = new StringBuffer(font);
-        var str = [{sub:"µ®½§¥¹»ß", col:new Vec4([1,0,0,1])}, {sub:"ðØæÐË¶º!", col:new Vec4([1,1,1,1])}];
+        var str = GLString.make("µ®½§¥¹»ß", [1,0,0,1]) + GLString.make("ðØæÐË¶º!", [1,1,1,1]);
         buf.set(str, AlignCentre);
-
-        trace(str.str());
-        trace(str.substr(0,4).str());
-        trace(str.substr(4,-1).str());
-        trace(str.substr(0,4).concat(str.substr(4,-1)).str());
 
         var renderer = new FontRenderer();
         while (!GLFW.windowShouldClose(window)) {

@@ -3,7 +3,7 @@ package gl3font;
 import ogl.GL;
 import ogl.GLM;
 import ogl.GLArray;
-
+import gl3font.GLString;
 import goodies.Lazy;
 import goodies.Maybe;
 
@@ -84,71 +84,6 @@ typedef TextLayout = {
     lines:Array<LineLayout>
 };
 
-typedef GLSubString = {sub:String, col:Vec4};
-typedef GLString = Array<GLSubString>;
-
-typedef GLISubString = {sub:Array<Int>, col:Vec4};
-typedef GLIString = Array<GLISubString>;
-
-class GLStringUtils {
-    public static function len(s:GLString) {
-        var len = 0;
-        for (sub in s) len += haxe.Utf8.length(sub.sub);
-        return len;
-    }
-    public static function substr(s:GLString, ind:Int, count:Int=-1) {
-        var last = if (count < 0) len(s) else ind + count;
-        var ret = [];
-        var i = 0;
-        for (sub in s) {
-            var osub = new haxe.Utf8(); var cnt = 0;
-            for (j in 0...haxe.Utf8.length(sub.sub)) {
-                if (i >= last) {
-                    if (cnt != 0) {
-                        ret.push({sub:osub.toString(), col:sub.col});
-                        cnt = 0;
-                    }
-                    break;
-                }
-                if (i >= ind) {
-                    osub.addChar(haxe.Utf8.charCodeAt(sub.sub, j));
-                    cnt++;
-                }
-                i++;
-            }
-            if (cnt != 0) ret.push({sub:osub.toString(), col:sub.col});
-            if (i >= last) break;
-        }
-        return ret;
-    }
-    public static function charCodeAt(s:GLString, ind:Int):Int {
-        var i = 0;
-        for (sub in s) {
-            for (j in 0...haxe.Utf8.length(sub.sub)) {
-                if (i == ind) return haxe.Utf8.charCodeAt(sub.sub, j);
-                i++;
-            }
-        }
-        return -1;
-    }
-    public static function concat(s:GLString, t:GLString) {
-        if (s.length > 0 && t.length > 0) {
-            var sn = s[s.length - 1];
-            var t0 = t[0];
-            if (sn.col == t0.col) {
-                t0.sub = sn.sub + t0.sub;
-                s.pop();
-            }
-        }
-        return s.concat(t);
-    }
-    public static function str(s:GLString) {
-        var ret = "";
-        for (sub in s) ret += sub.sub;
-        return ret;
-    }
-}
-
 @:allow(gl3font)
 class StringBuffer implements LazyEnv implements MaybeEnv {
     public static inline var VERTEX_SIZE = 8;
@@ -215,24 +150,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         GL.deleteBuffers([vertexBuffer]);
     }
 
-    public function getLines(string:GLString):Array<GLIString> {
-        var line = []; var lines = [line];
-        for (sub in string) {
-            var osub = {sub:[], col:sub.col};
-            for (i in 0...haxe.Utf8.length(sub.sub)) {
-                var c = haxe.Utf8.charCodeAt(sub.sub, i);
-                if (c == '\n'.code) {
-                    if (osub.sub.length != 0) line.push(osub);
-                    lines.push(line = []);
-                    osub = {sub:[], col:sub.col};
-                }
-                else osub.sub.push(c);
-            }
-            if (osub.sub.length != 0) line.push(osub);
-        }
-        return lines;
-    }
-
+    public function getLines(string:GLString):Array<GLString> return string.split('\n'.code);
     public function set(string:GLString, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
         if (font.info == null) throw "Font has no metrics info";
         var info = font.info.extract();
@@ -253,7 +171,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         }
 
         var lines = getLines(string);
-        var charCount = 0; for (l in lines) for (s in l) charCount += s.sub.length;
+        var charCount = string.length;
         var index = reserve(6*charCount);
         var align = align.or(AlignLeft);
 
@@ -265,8 +183,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var prev_index:Int = -1;
             var fst = true;
             var pen = 0.0;
-            for (s in line) {
-            for (char in s.sub) {
+            line.iter(function (char:Code, _) {
                 var glyph = info.idmap[char];
                 var metric = info.metrics[glyph];
                 if (!fst) pen += info.kerning[prev_index][glyph];
@@ -280,7 +197,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
                 if (x0 < minx) minx = x0;
                 if (x1 > maxx) maxx = x1;
-            }}
+            });
             metrics.push([minx, maxx-minx]);
         }
 
@@ -317,8 +234,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             var lineLayout:Maybe<LineLayout>;
             lineLayout = if (computeLayout) { bounds:new Vec2([1e100,-1e100]), chars: [] } else null;
 
-            for (s in line) {
-            for (char in s.sub) {
+            line.iter(function (char:Code, col:Maybe<Vec4>) {
                 var glyph = info.idmap[char];
                 var metric = info.metrics[glyph];
                 if (!fst) pen += info.kerning[prev_index][glyph]*scale;
@@ -334,13 +250,15 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 var u1 = u0 + metric.w;
                 var v1 = v0 + metric.h;
 
-                vertex(index, x0,y1, u0,v1, s.col); index += VERTEX_SIZE;
-                vertex(index, x1,y1, u1,v1, s.col); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0, s.col); index += VERTEX_SIZE;
+                var col = col.extract();
 
-                vertex(index, x0,y1, u0,v1, s.col); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0, s.col); index += VERTEX_SIZE;
-                vertex(index, x0,y0, u0,v0, s.col); index += VERTEX_SIZE;
+                vertex(index, x0,y1, u0,v1, col); index += VERTEX_SIZE;
+                vertex(index, x1,y1, u1,v1, col); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0, col); index += VERTEX_SIZE;
+
+                vertex(index, x0,y1, u0,v1, col); index += VERTEX_SIZE;
+                vertex(index, x1,y0, u1,v0, col); index += VERTEX_SIZE;
+                vertex(index, x0,y0, u0,v0, col); index += VERTEX_SIZE;
 
                 pen += metric.advance*scale;
                 prev_index = glyph;
@@ -358,7 +276,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
                     lineLayout.extract().chars.push(new Vec2([x0, x1-x0]));
                 }
-            }}
+            });
 
             if (computeLayout) {
                 var bounds = lineLayout.extract().bounds;

@@ -150,7 +150,16 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         GL.deleteBuffers([vertexBuffer]);
     }
 
-    public function getLines(string:GLString):Array<GLString> return string.split('\n'.code);
+    public static function getLines(string:GLString):Array<GLString> {
+        var lines = [];
+        var ind;
+        while ((ind = string.indexOf("\n")) != -1) {
+            lines.push(string.substr(0, ind));
+            string = string.substr(ind+1);
+        }
+        lines.push(string);
+        return lines;
+    }
     public function set(string:GLString, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
         if (font.info == null) throw "Font has no metrics info";
         var info = font.info.extract();
@@ -171,7 +180,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         }
 
         var lines = getLines(string);
-        var charCount = string.length;
+        var charCount = 0;
+        for (l in lines) charCount += l.length;
         var index = reserve(6*charCount);
         var align = align.or(AlignLeft);
 
@@ -250,6 +260,9 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 var u1 = u0 + metric.w;
                 var v1 = v0 + metric.h;
 
+                #if debug
+                    if (col == null) throw 'Character "${String.fromCharCode(char)}" has no colour, rendering line=${line.toString()} of string ${string.toString()}';
+                #end
                 var col = col.extract();
 
                 vertex(index, x0,y1, u0,v1, col); index += VERTEX_SIZE;

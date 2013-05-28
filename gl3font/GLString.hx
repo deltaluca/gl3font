@@ -79,8 +79,9 @@ abstract GLString(Array<GLSubString>) from Array<GLSubString> to Array<GLSubStri
         var t:Array<GLSubString> = this;
         var ret:Array<GLSubString> = [];
         for (sub in t) {
-            var part = sub.sub.slice(ind, count);
+            var part = sub.sub.slice(ind, count < 0 ? sub.sub.length : ind+count);
             if (part.length != 0) ret.push({sub:part, col:sub.col});
+            ind -= sub.sub.length;
         }
         return ret;
     }
@@ -89,8 +90,8 @@ abstract GLString(Array<GLSubString>) from Array<GLSubString> to Array<GLSubStri
     public function indexOf(str:GLString, ?startIndex:Maybe<Int>):Int {
         var ind = if (startIndex == null) 0 else startIndex.extract();
         var slen = str.length;
-        var len = this.length - slen;
-        while (ind < len) {
+        var len = length - slen;
+        while (ind <= len) {
             var match = true;
             for (i in 0...slen) {
                 if (charCodeAt(i+ind) != str.charCodeAt(i)) {
@@ -107,7 +108,7 @@ abstract GLString(Array<GLSubString>) from Array<GLSubString> to Array<GLSubStri
     // ignores colour.
     public function lastIndexOf(str:GLString, ?startIndex:Maybe<Int>):Int {
         var slen = str.length;
-        var len = this.length - slen;
+        var len = length - slen;
         var ind = if (startIndex == null) len else Std.int(Math.min(len, startIndex.extract()));
         while (ind >= 0) {
             var match = true;
@@ -194,6 +195,16 @@ abstract GLString(Array<GLSubString>) from Array<GLSubString> to Array<GLSubStri
         var join = if (at.length != 0 && bt.length != 0) joinColours(at[at.length-1], bt[0]) else null;
         if (join == null) return at.concat(bt);
         else return at.slice(0,at.length-1).concat([join.extract()]).concat(bt.slice(1));
+    }
+
+    @:op(A+B) public static function concatS(a:GLString, b:String):GLString
+        return concat(a, b);
+    @:op(A+B) public static function concatS_(a:String, b:GLString):GLString
+        return concat(a, b);
+
+    // ignores colour
+    @:op(A==B) public static function eq(a:GLString, b:GLString):Bool {
+        return a != null && b != null && a.toString() == b.toString() || a == null && b == null;
     }
 
     public inline function iter(f:Code->Maybe<Vec4>->Void) {

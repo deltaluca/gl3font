@@ -81,7 +81,8 @@ abstract GLString(Array<GLSubString>) from Array<GLSubString> to Array<GLSubStri
         for (sub in t) {
             var part = sub.sub.slice(ind, count < 0 ? sub.sub.length : ind+count);
             if (part.length != 0) ret.push({sub:part, col:sub.col});
-            ind -= sub.sub.length;
+            ind += part.length - sub.sub.length;
+            count -= part.length;
         }
         return ret;
     }

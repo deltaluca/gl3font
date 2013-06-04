@@ -2,77 +2,26 @@ package;
 
 import gl3font.Font;
 import gl3font.GLString;
+import ogl.GLM;
 
 class Main {
     static function main() {
-        var x:GLString = "AB";
-        trace(x.substr(1));
-        return;
-        trace(StringBuffer.getLines("hello"));
-        trace("\n\n");
-        trace(StringBuffer.getLines("hello\n"));
-        trace("\n\n");
-        trace(StringBuffer.getLines("hello\n\n"));
-        trace("\n\n");
-        trace(StringBuffer.getLines("hello\n\n\n"));
-        return;
-
-        var x = GLString.make("abcd", [1,1,1,1]);
-        trace(untyped x);
-        trace(untyped x.substr(0,4));
-        trace(untyped x.substr(4));
-        var y = GLString.concat(x.substr(0,4), "\n");
-        trace(untyped y);
-        $type(x.substr(0,4));
-        $type("\n");
-        $type(x.substr(0,4) + "\n");
-        y = x.substr(0,4) + "\n";
-        trace(untyped y);
-
-
-        return;
-
-        var x:GLString = "Hello world!";
-        x = x.normalise([1,2,3,4]);
-        trace(x);
-        trace(untyped x);
-
-        var y:GLString = "Hi there!";
-        y = y.normalise([3,4,5,6]);
-        trace(y);
-        trace(untyped y);
-
-        trace(x+y);
-        trace(untyped (x+y));
-
-        y = y.normalise([1,2,3,4]);
-        trace(x+y);
-        trace(untyped (x+y));
-
-        y = y.normalise(null);
-        trace(x+y);
-        trace(untyped (x+y));
-
-        x = x.normalise(null);
-        trace(x+y);
-        trace(untyped (x+y));
-
-        x = x.normalise([1,2,3,4]);
-        trace(x+y);
-        trace(untyped (x+y));
-
-        y = y.normalise([4,5,6,7]);
-        trace((x+y).split('o'.code));
-
-        trace("\n\n");
-
-        var xs:Array<GLString> = [x.normalise(null), y.normalise(null)];
-        trace(GLString.join(xs));
-        trace(GLString.join(xs, "~~"));
-
-        trace("\n\n");
-
-        trace(x.indexOf('o'));
-        trace(x.lastIndexOf('o'));
+        var c1:Vec4 = [1,1,1,0];
+        var c2:Vec4 = [1,1,0,0];
+        var c3:Vec4 = [1,0,0,0];
+        var x:GLString = "cwd=/home/luca/Projects/stress/";x += "\n   ";
+        x += GLString.make("2011.07.21-f4_12ms.avi",c1)  ; x +=  "\n   ";
+        x += GLString.make("0303_11Mavi.chd",c2)  ; x +=  "\n   ";
+        x += GLString.make("2011.06.30-a1_5cmavi.chd",c3)  ; x +=  "\n   ";
+        x += GLString.make("2011.07.12-d4_8ms.avi",c1)  ; x +=  "\n   ";
+        x += GLString.make("2011.07.12-d4_8msavi.chd",c2)  ; x +=  "\n   ";
+        x += GLString.make("2011.06.30-a1_5cm.avi",c3)  ; x +=  "\n   ";
+        x += GLString.make("2011.07.13-e4_12msavi.chd",c1)  ; x +=  "\n   ";
+        x += GLString.make("0303_11M.avi",c2)  ; x +=  "\n   ";
+        x += GLString.make("2011.07.13-e4_12ms.avi",c3)  ; x +=  "\n   ";
+        x += GLString.make("0303_5m.avi",c1); x+= "\n   ";
+        x += GLString.make("...",c2);
+        trace("\n"+x.toString());
+        for (l in StringBuffer.getLines(x)) trace(l.toString());
     }
 }

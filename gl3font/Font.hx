@@ -160,9 +160,11 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         lines.push(string);
         return lines;
     }
-    public function set(string:GLString, ?align:Maybe<FontAlign>, computeLayout:Bool=false):Maybe<TextLayout> {
+    public function set(string:GLString, ?align:Maybe<FontAlign>, ?spacing:Maybe<Float>, computeLayout:Bool=false):Maybe<TextLayout> {
         if (font.info == null) throw "Font has no metrics info";
         var info = font.info.extract();
+
+        var spacing = if (spacing == null) info.height else spacing.extract();
 
         var layout:Maybe<TextLayout>;
         layout = if (computeLayout) { bounds: new Vec4([1e100,1e100,-1e100,-1e100]), lines: [] } else null;
@@ -299,7 +301,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 layout.extract().lines.push(lineLayout.extract());
             }
 
-            peny += info.height;
+            peny += spacing;
         }
 
         if (computeLayout) {
@@ -311,7 +313,7 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
             else bounds.x = bounds.z = 0;
 
             bounds.y = -info.ascender;
-            bounds.w = (info.ascender - info.descender) * lines.length;
+            bounds.w = (info.ascender - info.descender) + (lines.length - 1) * spacing;
         }
 
         return layout;
@@ -425,7 +427,7 @@ class Font {
 
         var file = sys.io.File.read(dist, true);
         var png = (new format.png.Reader(file)).read();
-        var data:GLubyteArray = format.png.Tools.extract(png,[0]).getData();
+        var data:GLubyteArray = format.png.Tools.extractGrey(png).getData();
         var header = format.png.Tools.getHeader(png);
         GL.texImage2D(GL.TEXTURE_2D, 0, GL.LUMINANCE, header.width, header.height, 0, GL.LUMINANCE, data);
 

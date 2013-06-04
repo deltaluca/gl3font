@@ -22,7 +22,7 @@ class Main {
 
         var buf = new StringBuffer(font);
         var str = GLString.make("µ®½§¥¹»ß", [1,0,0,1]) + GLString.make("ðØæÐË¶º!", [1,1,1,1]);
-        buf.set(str, AlignCentre);
+        buf.set(str, AlignCentre, null, true);
 
         var renderer = new FontRenderer();
         while (!GLFW.windowShouldClose(window)) {

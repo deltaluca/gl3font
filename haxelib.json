@@ -4,8 +4,8 @@
     "license":      "MIT",
     "tags":         ["cpp"],
     "description":  "Library for rendering crisp vector fonts in opengl (haxe side using ogl lib) based on distance fields",
-    "version":      "0.0.1",
-    "releasenote":  "First release, many improvements could be made, but perfectly functional.",
+    "version":      "0.0.2",
+    "releasenote":  "Add ISO-7 to given fonts, updated for lastest format. Improve font metric info.",
     "contributors": ["deltaluca"],
     "dependencies": {
         "hxcpp": "",

@@ -37,6 +37,9 @@ class Main {
 
             GL.clear(GL.COLOR_BUFFER_BIT);
 
+            for (i in 0...100)
+                buf.set(str, AlignCentre, null, true);
+
             renderer.begin();
             renderer.setTransform(
                 Mat3x2.viewportMap(800, 600) *

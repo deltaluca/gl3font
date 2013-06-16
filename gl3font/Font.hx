@@ -6,6 +6,7 @@ import ogl.GLArray;
 import gl3font.GLString;
 import goodies.Lazy;
 import goodies.Maybe;
+import gl3font.PNG;
 
 class Metric {
     public var advance:Float;
@@ -120,14 +121,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
         invalidated = true;
     }
     public inline function vertex(i:Int, x:Float, y:Float, u:Float, v:Float, col:Vec4) {
-        vertexData[i+0] = x;
-        vertexData[i+1] = y;
-        vertexData[i+2] = u;
-        vertexData[i+3] = v;
-        vertexData[i+4] = col.r;
-        vertexData[i+5] = col.g;
-        vertexData[i+6] = col.b;
-        vertexData[i+7] = col.a;
+        vertexData.subData([x,y,u,v],i);
+        vertexData.subDataVec(col, i+4);
     }
 
     public function new(font:Maybe<Font>, ?size:Maybe<Int>, staticDraw=false) {
@@ -425,11 +420,9 @@ class Font {
         texture = GL.genTextures(1)[0];
         GL.bindTexture(GL.TEXTURE_2D, texture);
 
-        var file = sys.io.File.read(dist, true);
-        var png = (new format.png.Reader(file)).read();
-        var data:GLubyteArray = format.png.Tools.extractGrey(png).getData();
-        var header = format.png.Tools.getHeader(png);
-        GL.texImage2D(GL.TEXTURE_2D, 0, GL.LUMINANCE, header.width, header.height, 0, GL.LUMINANCE, data);
+        var png = PNG.grey(dist);
+        var bytes:GLubyteArray = new GLubyteArray(cast png.data);
+        GL.texImage2D(GL.TEXTURE_2D, 0, GL.LUMINANCE, png.width, png.height, 0, GL.LUMINANCE, bytes);
 
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
         GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);

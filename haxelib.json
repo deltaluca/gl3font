@@ -10,7 +10,6 @@
     "dependencies": {
         "hxcpp": "",
         "ogl": "",
-        "format": "",
         "goodies": ""
     }
 }

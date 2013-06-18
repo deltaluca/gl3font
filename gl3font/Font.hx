@@ -229,6 +229,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                 [for (m in metrics) [-max/2,max/m[1]]];
         };
 
+        var data = [];
+
         var peny = 0.0;
         var i = -1;
         for (line in lines) {
@@ -261,14 +263,18 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
                     if (col == null) throw 'Character "${String.fromCharCode(char)}" has no colour, rendering line=${line.toString()} of string ${string.toString()}';
                 #end
                 var col = col.extract();
+                var cr = col.r;
+                var cg = col.g;
+                var cb = col.b;
+                var ca = col.a;
 
-                vertex(index, x0,y1, u0,v1, col); index += VERTEX_SIZE;
-                vertex(index, x1,y1, u1,v1, col); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0, col); index += VERTEX_SIZE;
+                data.push(x0); data.push(y1); data.push(u0); data.push(v1); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
+                data.push(x1); data.push(y1); data.push(u1); data.push(v1); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
+                data.push(x1); data.push(y0); data.push(u1); data.push(v0); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
 
-                vertex(index, x0,y1, u0,v1, col); index += VERTEX_SIZE;
-                vertex(index, x1,y0, u1,v0, col); index += VERTEX_SIZE;
-                vertex(index, x0,y0, u0,v0, col); index += VERTEX_SIZE;
+                data.push(x0); data.push(y1); data.push(u0); data.push(v1); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
+                data.push(x1); data.push(y0); data.push(u1); data.push(v0); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
+                data.push(x0); data.push(y0); data.push(u0); data.push(v0); data.push(cr); data.push(cg); data.push(cb); data.push(ca);
 
                 pen += metric.advance*scale;
                 prev_index = glyph;
@@ -298,6 +304,8 @@ class StringBuffer implements LazyEnv implements MaybeEnv {
 
             peny += spacing;
         }
+
+        vertexData.subData(data, 0);
 
         if (computeLayout) {
             var bounds = layout.extract().bounds;

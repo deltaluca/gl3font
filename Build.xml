@@ -1,0 +1,43 @@
+<xml>
+
+    <!-- Build file for the Haxe wrapper of gameplay3d -->
+    <!-- Install hxcpp and run with 'haxelib run hxcpp Build.xml' -->
+
+    <include name="${HXCPP}/build-tool/BuildCommon.xml"/>
+
+    <!-- Determine the output location for the NDLL -->
+
+    <set name="LIB_DIR" value="-L" unless="windows"/>
+    <set name="LIB_DIR" value="-libpath:" if="windows"/>
+    <section if="linux">
+        <set name="LIB_SUFFIX" value="Linux" unless="HXCPP_M64"/>
+        <set name="LIB_SUFFIX" value="Linux64" if="HXCPP_M64"/>
+    </section>
+
+    <!-- Specify the list of files to be compiled and the compile options. -->
+
+    <files id="common">
+        <compilerflag value="-Iinclude"/>
+
+        <file name="src/main.cpp"/>
+    </files>
+
+    <!-- Generate the NDLL. -->
+
+    <set name="configuration_type" value="dll"/>
+
+    <target id="gl3font" output="gl3font" tool="linker" toolid="${configuration_type}">
+        <outdir name="ndll/${LIB_SUFFIX}"/>
+        <ext value=".ndll"/>
+
+        <files id="common"/>
+
+        <flag value="${LIB_DIR}${LIB_SUFFIX}"/>
+
+        <lib name="-lpng"/>
+    </target>
+
+    <target id="default">
+        <target id="gl3font"/>
+    </target>
+</xml>

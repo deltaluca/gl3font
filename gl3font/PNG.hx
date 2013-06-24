@@ -2,7 +2,7 @@ package gl3font;
 
 import #if neko neko #else cpp #end.Lib;
 
-extern class ImageData {}
+abstract ImageData(Dynamic) from Dynamic to Dynamic {}
 
 class PNG {
 #if neko

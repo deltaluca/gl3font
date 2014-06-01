@@ -2,10 +2,10 @@
     "name":         "gl3font",
     "url":          "https://github.com/deltaluca/gl3font",
     "license":      "MIT",
-    "tags":         ["cpp"],
+    "tags":         ["cpp","neko"],
     "description":  "Library for rendering crisp vector fonts in opengl (haxe side using ogl lib) based on distance fields",
-    "version":      "0.0.2",
-    "releasenote":  "Add ISO-7 to given fonts, updated for lastest format. Improve font metric info.",
+    "version":      "0.0.3",
+    "releasenote":  "Performance improvements",
     "contributors": ["deltaluca"],
     "dependencies": {
         "hxcpp": "",

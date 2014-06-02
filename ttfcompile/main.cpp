@@ -12,6 +12,7 @@
 #include <set>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
+#include FT_OUTLINE_H
 #include <unicode/utf.h>
 #include <unicode/unistr.h>
 #include <unicode/stringpiece.h>
@@ -236,6 +237,197 @@ png::image<png::gray_pixel> distanceImage(const png::image<png::gray_pixel>& src
     return dst;
 }
 
+struct Vec2
+{
+    float x, y;
+};
+
+struct Segment
+{
+    enum Type : uint8_t
+    {
+        START,
+        LINETO,
+        CURVETO
+    } type;
+
+    Vec2 end; // (start for START type, always first).
+    Vec2 control; // defined for bezier type.
+};
+
+typedef std::vector<Segment> Outline;
+typedef std::vector<Outline> OutlineSet;
+bool contains(const Outline& outline, const Vec2& p);
+std::vector<OutlineSet> generateOutlines(FT_Face& face, const Chars& chars, float pointSize)
+{
+    float scale = 1.f / (64 * pointSize);
+    std::vector<OutlineSet> ret;
+    for (size_t i = 0; i < chars.length; ++i)
+    {
+        auto c = chars[i];
+        FT_Load_Glyph(face, FT_Get_Char_Index(face, c), FT_LOAD_RENDER);
+        auto& outline = face->glyph->outline;
+
+        struct Context
+        {
+            float scale;
+            OutlineSet set;
+            Outline current;
+        } context;
+        context.scale = scale;
+
+        FT_Outline_Funcs interface = {
+            [](const FT_Vector* to, void* user)
+            {
+                Context& ctx = *((Context*)user);
+
+                float x = ((float)to->x) * ctx.scale;
+                float y = ((float)to->y) * ctx.scale;
+
+                if (!ctx.current.empty())
+                {
+                    ctx.set.push_back(ctx.current);
+                    ctx.current.clear();
+                }
+                ctx.current.push_back({
+                    Segment::Type::START,
+                    { x, y },
+                    { 0, 0 }
+                });
+
+                return 0;
+            },
+            [](const FT_Vector* to, void* user)
+            {
+                Context& ctx = *((Context*)user);
+
+                float x = ((float)to->x) * ctx.scale;
+                float y = ((float)to->y) * ctx.scale;
+
+                ctx.current.push_back({
+                    Segment::Type::LINETO,
+                    { x, y },
+                    { 0, 0 }
+                });
+
+                return 0;
+            },
+            [](const FT_Vector* control, const FT_Vector* to, void* user)
+            {
+                Context& ctx = *((Context*)user);
+
+                float x = ((float)to->x) * ctx.scale;
+                float y = ((float)to->y) * ctx.scale;
+                float cx = ((float)control->x) * ctx.scale;
+                float cy = ((float)control->y) * ctx.scale;
+
+                ctx.current.push_back({
+                    Segment::Type::CURVETO,
+                    { x, y },
+                    { cx, cy }
+                });
+
+                return 0;
+            },
+            [](const FT_Vector*, const FT_Vector*, const FT_Vector*, void*)
+            {
+                std::cerr << "Cannot handle cubic bezier curves in glyph. Failing!" << std::endl;
+                return 1;
+            },
+            0, 0
+        };
+
+        if (FT_Outline_Decompose(&outline, &interface, (void*)(&context)) == 0)
+        {
+            if (!context.current.empty())
+            {
+                context.set.push_back(context.current);
+            }
+            ret.push_back(context.set);
+        }
+    }
+    return ret;
+}
+
+bool contains(const Outline& outline, const Vec2& p)
+{
+    Vec2 prev;
+    size_t count = 0;
+    bool first = true;
+    for (const auto& s: outline)
+    {
+        if (first)
+        {
+            assert(s.type == Segment::Type::START);
+            prev = s.end;
+            first = false;
+            continue;
+        }
+
+        const Vec2& next = s.end;
+        const Vec2& control = s.control;
+        float a, b, c, d, t, t0, t1;
+        switch (s.type)
+        {
+        case Segment::Type::LINETO:
+            if (next.y != prev.y)
+            {
+                t = (p.y - prev.y) / (next.y - prev.y);
+                if (t >= 0.f && t <= 1.f)
+                {
+                    if ((next.x - prev.x) * t >= (p.x - prev.x))
+                    {
+                        ++count;
+                    }
+                }
+            }
+            break;
+        case Segment::Type::CURVETO:
+            a = (prev.y + next.y - 2.f * control.y);
+            b = 2.f * (control.y - prev.y);
+            c = prev.y - p.y;
+            d = b * b - 4.f * a * c;
+            if (d >= 0.f && a != 0.f)
+            {
+                d = sqrt(d);
+                a = 1.f / (2.f * a);
+                t0 = (-b + d) * a;
+                t1 = (-b - d) * a;
+                if (t0 >= 0.f && t0 <= 1.f)
+                {
+                    if ((1.f - t0) * (1.f - t0) * prev.x + 2.f * (1.f - t0) * t0 * control.x + t0 * t0 * next.x >= p.x)
+                    {
+                        ++count;
+                    }
+                }
+                if (t1 >= 0.f && t1 <= 1.f)
+                {
+                    if ((1.f - t1) * (1.f - t1) * prev.x + 2.f * (1.f - t1) * t1 * control.x + t1 * t1 * next.x >= p.x)
+                    {
+                        ++count;
+                    }
+                }
+            }
+            else if (a == 0.f && b != 0.f)
+            {
+                t = -c / b;
+                if (t >= 0.f && t <= 1.f)
+                {
+                    if ((1.f - t) * (1.f - t) * prev.x + 2.f * (1.f - t) * t * control.x + t * t * next.x >= p.x)
+                    {
+                        ++count;
+                    }
+                }
+            }
+            break;
+        default:
+            assert(false);
+        }
+        prev = next;
+    }
+    return (count & 1) == 1;
+}
+
 struct OutStream
 {
     std::ofstream file;
@@ -260,28 +452,30 @@ struct OutStream
 
 int main(int argc, char* argv[])
 {
-    if (argc < 5)
+    if (argc < 3)
     {
         std::cout << "ttfcompile fontpath.ttf pxheight gap searchsize outsize [-chars=file] [-o=outname]" << std::endl
-                  << "ttfcompile -transform image.png searchsize outsize [-o=outname]" << std::endl;
+                  << "ttfcompile -transform image.png searchsize outsize [-o=outname]" << std::endl
+                  << "ttfcompile -vector fontpath.ttf [-chars=file] [-o=outname]" << std::endl;
         return 1;
     }
 
     if (std::string(argv[1]).compare("-transform") == 0)
     {
-        std::string imagePath = argv[1];
-        size_t searchSize     = atoi(argv[2]);
-        size_t outSize        = atoi(argv[3]);
+        std::string imagePath = argv[2];
+        size_t searchSize     = atoi(argv[3]);
+        size_t outSize        = atoi(argv[4]);
 
         std::string oname = imagePath;
         arg_output(argv, argc, oname);
 
-        auto dist = distanceImage(image, outsize, searchsize);
+        auto image = png::image<png::gray_pixel>(imagePath);
+        auto dist = distanceImage(image, outSize, searchSize);
         dist.write(oname+".png");
 
         return 0;
     }
-    else
+    else if (std::string(argv[1]).compare("-vector") != 0)
     {
         std::string fontPath = argv[1];
         size_t pxheight      = atoi(argv[2]);
@@ -295,7 +489,7 @@ int main(int argc, char* argv[])
         arg_output(argv, argc, oname);
 
         FT_Face face;
-        if (!loadFontFace(fontpath, face))
+        if (!loadFontFace(fontPath, face))
         {
             return 1;
         }
@@ -349,8 +543,68 @@ int main(int argc, char* argv[])
 
         data.close();
 
-        auto dist = distanceImage(image, outsize, searchsize);
+        auto dist = distanceImage(image, outSize, searchSize);
         dist.write(oname+".png");
+
+        return 0;
+    }
+    else
+    {
+        std::string fontPath = argv[2];
+        size_t pxheight = 16;
+
+        std::string oname = fontPath;
+        std::string charset = ISO_7;
+        arg_chars(argv, argc, charset);
+        arg_output(argv, argc, oname);
+
+        FT_Face face;
+        if (!loadFontFace(fontPath, face))
+        {
+            return 1;
+        }
+        if (FT_Set_Pixel_Sizes(face, 0, pxheight))
+        {
+            std::cerr << "Failed to set font size" << std::endl;
+            return 1;
+        }
+
+        auto chars = unicode_map(charset);
+        auto kerning = generateKerningTable(face, chars, pxheight);
+        auto meta = computeGlyphMeta(face, chars, pxheight);
+        auto outlines = generateOutlines(face, chars, pxheight);
+
+        OutStream data;
+        if (!data.open(oname + ".dat"))
+        {
+            std::cerr << "failed to open output file" << std::endl;
+            return 1;
+        }
+
+        data << ((uint32_t)chars.length);
+
+        data << ((float)((face->size->metrics.height    / 64.f) / pxheight))
+             << ((float)((face->size->metrics.ascender  / 64.f) / pxheight))
+             << ((float)((face->size->metrics.descender / 64.f) / pxheight));
+
+        for (size_t i = 0; i < chars.length; ++i)
+        {
+            data << ((uint32_t)chars[i]);
+
+            data << ((float)(meta[i].xAdvance))
+                 << ((float)(meta[i].offsetX))
+                 << ((float)(meta[i].offsetY))
+                 << ((float)(meta[i].width))
+                 << ((float)(meta[i].height));
+        }
+
+        for (auto k: kerning)
+        {
+            data << ((float)k.first)
+                 << ((uint32_t)k.second);
+        }
+
+        data.close();
 
         return 0;
     }

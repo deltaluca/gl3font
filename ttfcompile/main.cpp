@@ -8,6 +8,7 @@
 #include <functional>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <cmath>
 #include <set>
 #include FT_FREETYPE_H
@@ -37,6 +38,28 @@ void arg_chars(char* argv[], int argc, std::string& charset)
         if (arg.substr(0, 7).compare("-chars=") == 0)
         {
             charset = arg.substr(7);
+        }
+    }
+}
+void arg_charsfile(char* argv[], int argc, std::string& charset)
+{
+	for (size_t i = 1; i < (size_t)argc; ++i)
+    {
+        std::string arg = argv[i];
+        if (arg.substr(0, 11).compare("-charsfile=") == 0)
+        {
+			std::ifstream in( arg.substr(11) );
+			std::stringstream buffer;
+			std::string to;
+			if (in)
+			{
+				while(std::getline(in,to,'\n')){
+					buffer << to;
+				}
+				in.close();
+				charset = buffer.str();
+			}
+			else throw(errno);
         }
     }
 }
@@ -485,6 +508,7 @@ int main(int argc, char* argv[])
 
         std::string oname = fontPath;
         std::string charset = ISO_7;
+        arg_charsfile(argv, argc, charset);
         arg_chars(argv, argc, charset);
         arg_output(argv, argc, oname);
 
@@ -555,6 +579,7 @@ int main(int argc, char* argv[])
 
         std::string oname = fontPath;
         std::string charset = ISO_7;
+        arg_charsfile(argv, argc, charset);
         arg_chars(argv, argc, charset);
         arg_output(argv, argc, oname);
 
